@@ -1,7 +1,7 @@
 use std::io::{self, Write};
 use std::fs;
 use std::path::Path;
-use std::process::{Command, Output};
+use std::process::{Command};
 
 fn main() {
     loop {
@@ -38,7 +38,7 @@ fn rep(input: &str) {
             } else {
                 if let Ok(_) = Command::new("rustc").arg("mal.rs").output() {
                     if let Ok(result) = Command::new("./mal").output() {
-                        println!("{}", String::from_utf8_lossy(&result.stdout));
+                        print!("{}", String::from_utf8_lossy(&result.stdout));
                     }
                 }
             }
