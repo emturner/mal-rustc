@@ -1,5 +1,5 @@
 [workspace]
 
 members = [
-    "malrc0", 
+    "step0_repl", 
 ]
