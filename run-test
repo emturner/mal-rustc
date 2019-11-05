@@ -1,0 +1,4 @@
+#!/bin/bash
+
+cd mal
+make "test^mal-rustc^step0"
