@@ -39,14 +39,12 @@ fn rep(input: &str) {
         Ok(rust) => {
             if let Err(e) = fs::write(Path::new("mal-gen.rs"), rust) {
                 println!("{}", e);
-            } else {
-                if let Ok(result) = Command::new("rustc").arg("mal-gen.rs").output() {
-                    if !result.stderr.is_empty() {
-                        println!("{}", String::from_utf8_lossy(&result.stderr));
-                    } else if let Ok(result) = Command::new("./mal-gen").output() {
-                        // just print as user input ends in <enter>
-                        println!("{}", String::from_utf8_lossy(&result.stdout));
-                    }
+            } else if let Ok(result) = Command::new("rustc").arg("mal-gen.rs").output() {
+                if !result.stderr.is_empty() {
+                    println!("{}", String::from_utf8_lossy(&result.stderr));
+                } else if let Ok(result) = Command::new("./mal-gen").output() {
+                    // just print as user input ends in <enter>
+                    println!("{}", String::from_utf8_lossy(&result.stdout));
                 }
             }
         }
