@@ -1,7 +1,7 @@
-use std::io::{self, Write};
 use std::fs;
+use std::io::{self, Write};
 use std::path::Path;
-use std::process::{Command};
+use std::process::Command;
 
 extern crate quote;
 use quote::quote;
@@ -14,7 +14,7 @@ fn main() {
         let mut input = String::new();
         match io::stdin().read_line(&mut input) {
             Ok(0) => break,
-            Ok(_) => rep(&input), 
+            Ok(_) => rep(&input),
             Err(e) => {
                 println!("{}", e);
                 break;
@@ -28,7 +28,8 @@ fn compile_mal(input: &str) -> Result<String, String> {
         fn main() {
             print!("{}", #input);
         }
-    ).to_string();
+    )
+    .to_string();
 
     Ok(output)
 }
@@ -48,8 +49,7 @@ fn rep(input: &str) {
                     }
                 }
             }
-        },
+        }
         Err(e) => println!("{}", e),
     }
-
 }
