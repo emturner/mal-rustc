@@ -1,23 +1,22 @@
 use nom::{
-    IResult,
     bytes::complete::tag,
     character::complete::*,
-    sequence::*,
     combinator::*,
-    error::{
-        context,
-        VerboseError
-    }
+    error::{context, VerboseError},
+    sequence::*,
+    IResult,
 };
 
 use crate::types::MalAtom;
 
 fn parse_nil<'a>(input: &'a str) -> IResult<&'a str, MalAtom, VerboseError<&'a str>> {
-    context("nil", 
-        map(
-            terminated(tag("nil"), peek(not(alphanumeric1))), |_| MalAtom::Nil))(input)
+    context(
+        "nil",
+        map(terminated(tag("nil"), peek(not(alphanumeric1))), |_| {
+            MalAtom::Nil
+        }),
+    )(input)
 }
-
 
 #[cfg(test)]
 mod tests {
