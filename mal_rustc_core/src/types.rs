@@ -7,5 +7,5 @@ pub enum MalAtom<'a> {
     Special(&'a str),
     String(&'a str),
     Int(i32),
-    List(LinkedList<MalAtom<'a>>)
+    List(LinkedList<MalAtom<'a>>),
 }

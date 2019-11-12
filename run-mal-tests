@@ -2,3 +2,4 @@
 
 cd mal
 make "test^mal-rustc^step0"
+make "test^mal-rustc^step1"

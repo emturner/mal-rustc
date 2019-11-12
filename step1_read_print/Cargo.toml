@@ -1,5 +1,5 @@
 [package]
-name = "step1_repl"
+name = "step1_read_print"
 version = "0.1.0"
 authors = ["emturner <em.turner@tutanota.com>"]
 edition = "2018"
