@@ -66,9 +66,41 @@ fn parse_string<'a>(input: &'a str) -> ParseResult<'a> {
     )(input)
 }
 
+fn parse_int<'a>(input: &'a str) -> ParseResult<'a> {
+    context(
+        "int",
+        map(
+            terminated(
+                alt((
+                    map_res(digit1, |i: &str| i.parse::<i64>().map(MalAtom::Int)),
+                    map_res(preceded(tag("-"), digit1), |i: &str| {
+                        i.parse::<i64>().map(|i| MalAtom::Int(-i))
+                    }),
+                )),
+                peek(not(alpha1)),
+            ),
+            |o| o,
+        ),
+    )(input)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn parse_int_ok() {
+        assert_eq!(Ok(("", MalAtom::Int(0))), parse_int("0"));
+        assert_eq!(Ok(("", MalAtom::Int(1304))), parse_int("1304"));
+
+        assert_eq!(Ok(("", MalAtom::Int(-290))), parse_int("-290"));
+    }
+
+    #[test]
+    fn parse_int_err() {
+        assert!(parse_int("ab13").is_err());
+        assert!(parse_int("124a").is_err());
+    }
 
     #[test]
     fn parse_nil_ok() {
