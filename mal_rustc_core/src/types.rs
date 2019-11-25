@@ -8,6 +8,6 @@ pub enum MalAtom<'a> {
     // ideally this would be &'a str, but we need to escape the control characters
     // so need to allocate a new string
     String(String),
-    Int(i32),
+    Int(i64),
     List(LinkedList<MalAtom<'a>>),
 }
