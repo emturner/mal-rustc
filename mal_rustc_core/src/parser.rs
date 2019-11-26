@@ -89,9 +89,48 @@ fn capture_whitespace<'a>(input: &'a str) -> IResult<&'a str, (), VerboseError<&
     context("whitespace", map(many0(alt((space1, tag(",")))), |_| ()))(input)
 }
 
+// captures comment
+fn capture_comment<'a>(input: &'a str) -> IResult<&'a str, (), VerboseError<&'a str>> {
+    context("comment", map(preceded(tag(";"), not_line_ending), |_| ()))(input)
+}
+
+fn parse_special<'a>(input: &'a str) -> ParseResult<'a> {
+    context(
+        "special",
+        map(
+            alt((
+                tag("~@"),
+                tag("'"), 
+                tag("`"), 
+                tag("~"), 
+                tag("^"), 
+                tag("@")
+                )), 
+            |i| MalAtom::Special(i))
+    )(input)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn capture_comment_ok() {
+        assert_eq!(Ok(("", ())), capture_comment(";"));
+        assert_eq!(Ok(("", ())), capture_comment("; hello comment"));
+        assert_eq!(Ok(("\n ()", ())), capture_comment("; hello comment\n ()"));
+        assert_eq!(Ok(("\r\n ()", ())), capture_comment("; hello comment\r\n ()"));
+    }
+
+    #[test]
+    fn parse_special_ok() {
+        assert_eq!(Ok(("", MalAtom::Special("~@"))), parse_special("~@"));
+        assert_eq!(Ok(("", MalAtom::Special("'"))), parse_special("'"));
+        assert_eq!(Ok(("", MalAtom::Special("`"))), parse_special("`"));
+        assert_eq!(Ok(("", MalAtom::Special("~"))), parse_special("~"));
+        assert_eq!(Ok(("", MalAtom::Special("^"))), parse_special("^"));
+        assert_eq!(Ok(("", MalAtom::Special("@"))), parse_special("@"));
+    }
 
     #[test]
     fn capture_whitespace_ok() {
