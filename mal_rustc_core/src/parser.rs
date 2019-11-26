@@ -4,7 +4,7 @@ use nom::{
     character::complete::*,
     combinator::*,
     error::{context, VerboseError},
-    multi::many0,
+    multi::*,
     sequence::*,
     IResult,
 };
@@ -84,9 +84,24 @@ fn parse_int<'a>(input: &'a str) -> ParseResult<'a> {
     )(input)
 }
 
+// captures whitespace & commans (which count as whitespace in mal)
+fn capture_whitespace<'a>(input: &'a str) -> IResult<&'a str, (), VerboseError<&'a str>> {
+    context("whitespace", map(many0(alt((space1, tag(",")))), |_| ()))(input)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn capture_whitespace_ok() {
+        assert_eq!(Ok(("", ())), capture_whitespace(""));
+        assert_eq!(Ok(("", ())), capture_whitespace(" "));
+        assert_eq!(Ok(("", ())), capture_whitespace(","));
+        assert_eq!(Ok(("", ())), capture_whitespace("  \t  ,,,,  \t\t  "));
+
+        assert_eq!(Ok(("a", ())), capture_whitespace("\t , \ta"));
+    }
 
     #[test]
     fn parse_int_ok() {
