@@ -1,5 +1,5 @@
-use proc_macro2::{TokenTree, Spacing, Span, Punct, TokenStream};
-use quote::{TokenStreamExt, ToTokens, quote};
+use proc_macro2::{Punct, Spacing, Span, TokenStream, TokenTree};
+use quote::{quote, ToTokens};
 
 use std::fmt::{self, Display};
 
@@ -19,13 +19,13 @@ pub enum MalAtom<'a> {
 impl<'a> ToTokens for MalAtom<'a> {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         match self {
-            MalAtom::Nil => tokens.append_all(quote!(MalAtom::Nil)),
-            MalAtom::Bool(b) => tokens.append_all(quote!(MalAtom::Bool(#b))),
-            MalAtom::Special(s) => tokens.append_all(quote!(MalAtom::Special(#s))),
-            MalAtom::String(s) => tokens.append_all(quote!(MalAtom::String(#s))),
-            MalAtom::Int(i) => tokens.append_all(quote!(MalAtom::Int(#i))),
-            MalAtom::Symbol(s) => tokens.append_all(quote!(MalAtom::Symbol(#s))),
-            MalAtom::SExp(sexp) => tokens.append_all(quote!(MalAtom::SExp(vec![])))
+            MalAtom::Nil => tokens.extend(quote!(MalAtom::Nil)),
+            MalAtom::Bool(b) => tokens.extend(quote!(MalAtom::Bool(#b))),
+            MalAtom::Special(s) => tokens.extend(quote!(MalAtom::Special(#s))),
+            MalAtom::String(s) => tokens.extend(quote!(MalAtom::String(#s))),
+            MalAtom::Int(i) => tokens.extend(quote!(MalAtom::Int(#i))),
+            MalAtom::Symbol(s) => tokens.extend(quote!(MalAtom::Symbol(#s))),
+            MalAtom::SExp(sexp) => tokens.extend(quote!(MalAtom::SExp(vec![#(#sexp),*]))),
         }
     }
 }
@@ -39,7 +39,7 @@ impl<'a> Display for MalAtom<'a> {
             MalAtom::String(s) => s.fmt(f),
             MalAtom::Int(i) => i.fmt(f),
             MalAtom::Symbol(s) => s.fmt(f),
-            MalAtom::SExp(sexp) => write!(f, "sexp")
+            MalAtom::SExp(sexp) => write!(f, "sexp"),
         }
     }
 }

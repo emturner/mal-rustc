@@ -135,10 +135,7 @@ fn parse_sexp<'a>(input: &'a str) -> ParseResult<'a> {
         map(
             delimited(
                 char('('),
-                preceded(
-                    capture_whitespace,
-                    many0(parse_mal_atom),
-                ),
+                many0(preceded(capture_whitespace, parse_mal_atom)),
                 cut(preceded(
                     capture_whitespace,
                     context("closing )", char(')')),
