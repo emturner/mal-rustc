@@ -1,6 +1,6 @@
 use nom::{
     branch::alt,
-    bytes::complete::{escaped_transform, tag},
+    bytes::complete::{escaped_transform, tag, take_till1},
     character::complete::*,
     combinator::*,
     error::{context, VerboseError},
@@ -9,7 +9,7 @@ use nom::{
     IResult,
 };
 
-use crate::types::MalAtom;
+use crate::types::runtime::MalAtom;
 
 type ParseResult<'a> = IResult<&'a str, MalAtom<'a>, VerboseError<&'a str>>;
 
@@ -43,7 +43,7 @@ fn parse_false<'a>(input: &'a str) -> ParseResult<'a> {
 fn parse_symbol<'a>(input: &'a str) -> ParseResult<'a> {
     context(
         "symbol",
-        map(terminated(alpha1, peek(not(alphanumeric1))), |i: &str| {
+        map(take_till1(|c| "[]{}()'`~^@ ,".contains(c)), |i: &str| {
             MalAtom::Symbol(i)
         }),
     )(input)
@@ -66,7 +66,7 @@ fn parse_string<'a>(input: &'a str) -> ParseResult<'a> {
                         map(tag("\""), |_| "\""),
                     ))(input)
                 })),
-                tag("\""),
+                cut(tag("\"")),
             ),
             |s| MalAtom::String(s.unwrap_or("".into())),
         ),
@@ -117,15 +117,18 @@ fn parse_special<'a>(input: &'a str) -> ParseResult<'a> {
 pub fn parse_mal_atom<'a>(input: &'a str) -> ParseResult<'a> {
     context(
         "mal atom",
-        alt((
-            parse_bool,
-            parse_int,
-            parse_nil,
-            parse_special,
-            parse_symbol,
-            parse_string,
-            parse_sexp,
-        )),
+        preceded(
+            alt((capture_whitespace, capture_comment)),
+            alt((
+                parse_bool,
+                parse_int,
+                parse_string,
+                parse_nil,
+                parse_special,
+                parse_symbol,
+                parse_sexp,
+            )),
+        ),
     )(input)
 }
 

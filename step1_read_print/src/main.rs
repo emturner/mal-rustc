@@ -7,11 +7,9 @@ extern crate quote;
 use quote::quote;
 
 extern crate nom;
-use nom::error::convert_error;
-use nom::Err;
 
 extern crate mal_rustc_core;
-use mal_rustc_core::{parser, types};
+use mal_rustc_core::{parser, MAL_RUNTIME};
 
 fn main() {
     loop {
@@ -32,14 +30,17 @@ fn main() {
 
 fn compile_mal(input: &str) -> Result<String, String> {
     let parse_result = parser::parse_mal_atom(input);
+
     if let Ok((_, ast)) = parse_result {
-        let ast = format!("{}", quote!(#ast).to_string());
-        let output = quote!(
-            fn main() {
-                print!("{}", #ast);
-            }
-        )
-        .to_string();
+        let output = format!(
+            "{}\r\n{}",
+            MAL_RUNTIME,
+            quote!(
+                fn main() {
+                    println!("{}", #ast);
+                }
+            )
+        );
 
         Ok(output)
     } else {
