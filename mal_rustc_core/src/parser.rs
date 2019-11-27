@@ -9,8 +9,6 @@ use nom::{
     IResult,
 };
 
-use std::iter::FromIterator;
-
 use crate::types::MalAtom;
 
 type ParseResult<'a> = IResult<&'a str, MalAtom<'a>, VerboseError<&'a str>>;
@@ -38,6 +36,15 @@ fn parse_false<'a>(input: &'a str) -> ParseResult<'a> {
         "false",
         map(terminated(tag("false"), peek(not(alphanumeric1))), |_| {
             MalAtom::Bool(false)
+        }),
+    )(input)
+}
+
+fn parse_symbol<'a>(input: &'a str) -> ParseResult<'a> {
+    context(
+        "symbol",
+        map(terminated(alpha1, peek(not(alphanumeric1))), |i: &str| {
+            MalAtom::Symbol(i)
         }),
     )(input)
 }
@@ -86,7 +93,10 @@ fn parse_int<'a>(input: &'a str) -> ParseResult<'a> {
 
 // captures whitespace & commans (which count as whitespace in mal)
 fn capture_whitespace<'a>(input: &'a str) -> IResult<&'a str, (), VerboseError<&'a str>> {
-    context("whitespace", map(many0(alt((space1, tag(",")))), |_| ()))(input)
+    context(
+        "whitespace",
+        map(many0(alt((space1, tag(","), line_ending))), |_| ()),
+    )(input)
 }
 
 // captures comment
@@ -98,15 +108,44 @@ fn parse_special<'a>(input: &'a str) -> ParseResult<'a> {
     context(
         "special",
         map(
-            alt((
-                tag("~@"),
-                tag("'"), 
-                tag("`"), 
-                tag("~"), 
-                tag("^"), 
-                tag("@")
-                )), 
-            |i| MalAtom::Special(i))
+            alt((tag("~@"), tag("'"), tag("`"), tag("~"), tag("^"), tag("@"))),
+            |i| MalAtom::Special(i),
+        ),
+    )(input)
+}
+
+pub fn parse_mal_atom<'a>(input: &'a str) -> ParseResult<'a> {
+    context(
+        "mal atom",
+        alt((
+            parse_bool,
+            parse_int,
+            parse_nil,
+            parse_special,
+            parse_symbol,
+            parse_string,
+            parse_sexp,
+        )),
+    )(input)
+}
+
+fn parse_sexp<'a>(input: &'a str) -> ParseResult<'a> {
+    context(
+        "sexp",
+        map(
+            delimited(
+                char('('),
+                preceded(
+                    capture_whitespace,
+                    many0(parse_mal_atom),
+                ),
+                cut(preceded(
+                    capture_whitespace,
+                    context("closing )", char(')')),
+                )),
+            ),
+            |s| MalAtom::SExp(s),
+        ),
     )(input)
 }
 
@@ -115,11 +154,22 @@ mod tests {
     use super::*;
 
     #[test]
+    fn parse_symbol_ok() {
+        assert_eq!(
+            Ok((" world", MalAtom::Symbol("hello"))),
+            parse_symbol("hello world")
+        );
+    }
+
+    #[test]
     fn capture_comment_ok() {
         assert_eq!(Ok(("", ())), capture_comment(";"));
         assert_eq!(Ok(("", ())), capture_comment("; hello comment"));
         assert_eq!(Ok(("\n ()", ())), capture_comment("; hello comment\n ()"));
-        assert_eq!(Ok(("\r\n ()", ())), capture_comment("; hello comment\r\n ()"));
+        assert_eq!(
+            Ok(("\r\n ()", ())),
+            capture_comment("; hello comment\r\n ()")
+        );
     }
 
     #[test]
@@ -140,6 +190,7 @@ mod tests {
         assert_eq!(Ok(("", ())), capture_whitespace("  \t  ,,,,  \t\t  "));
 
         assert_eq!(Ok(("a", ())), capture_whitespace("\t , \ta"));
+        assert_eq!(Ok(("a", ())), capture_whitespace("\t , \n , \r\n \ta"));
     }
 
     #[test]

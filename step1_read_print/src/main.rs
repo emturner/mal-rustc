@@ -6,6 +6,13 @@ use std::process::Command;
 extern crate quote;
 use quote::quote;
 
+extern crate nom;
+use nom::error::convert_error;
+use nom::Err;
+
+extern crate mal_rustc_core;
+use mal_rustc_core::{parser, types};
+
 fn main() {
     loop {
         print!("user> ");
@@ -24,14 +31,18 @@ fn main() {
 }
 
 fn compile_mal(input: &str) -> Result<String, String> {
-    let output = quote!(
-        fn main() {
-            print!("{}", #input);
-        }
-    )
-    .to_string();
+    if let Ok((_, ast)) = parser::parse_mal_atom(input) {
+        let ast = format!("{}", ast);
+        let output = quote!(
+            fn main() {
+                print!("{}", #ast);
+            }
+        ).to_string();
 
-    Ok(output)
+        Ok(output)
+    } else {
+        Err("an error occurred".into())
+    }
 }
 
 fn rep(input: &str) {
