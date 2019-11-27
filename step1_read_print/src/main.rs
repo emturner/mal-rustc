@@ -31,17 +31,19 @@ fn main() {
 }
 
 fn compile_mal(input: &str) -> Result<String, String> {
-    if let Ok((_, ast)) = parser::parse_mal_atom(input) {
-        let ast = format!("{}", ast);
+    let parse_result = parser::parse_mal_atom(input);
+    if let Ok((_, ast)) = parse_result {
+        let ast = format!("{}", quote!(#ast).to_string());
         let output = quote!(
             fn main() {
                 print!("{}", #ast);
             }
-        ).to_string();
+        )
+        .to_string();
 
         Ok(output)
     } else {
-        Err("an error occurred".into())
+        Err(format!("{:?}", parse_result))
     }
 }
 
