@@ -15,6 +15,7 @@ impl<'a> ToTokens for MalAtom<'a> {
             MalAtom::Int(i) => tokens.extend(quote!(MalAtom::Int(#i))),
             MalAtom::Symbol(s) => tokens.extend(quote!(MalAtom::Symbol(#s))),
             MalAtom::SExp(sexp) => tokens.extend(quote!(MalAtom::SExp(vec![#(#sexp),*]))),
+            MalAtom::Vector(v) => tokens.extend(quote!(MalAtom::SExp(vec![#(#v),*]))),
         }
     }
 }
