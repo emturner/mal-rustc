@@ -13,6 +13,25 @@ use crate::types::runtime::MalAtom;
 
 type ParseResult<'a> = IResult<&'a str, MalAtom<'a>, VerboseError<&'a str>>;
 
+pub fn parse_mal_atom<'a>(input: &'a str) -> ParseResult<'a> {
+    context(
+        "mal atom",
+        preceded(
+            alt((capture_whitespace, capture_comment)),
+            alt((
+                parse_bool,
+                parse_int,
+                parse_string,
+                parse_nil,
+                parse_special,
+                parse_symbol,
+                parse_sexp,
+                parse_vector,
+            )),
+        ),
+    )(input)
+}
+
 fn parse_nil<'a>(input: &'a str) -> ParseResult<'a> {
     context(
         "nil",
@@ -66,7 +85,7 @@ fn parse_string<'a>(input: &'a str) -> ParseResult<'a> {
                         map(tag("\""), |_| "\""),
                     ))(input)
                 })),
-                cut(tag("\"")),
+                context("UNBALANCED", cut(tag("\""))),
             ),
             |s| MalAtom::String(s.unwrap_or("".into())),
         ),
@@ -107,28 +126,16 @@ fn capture_comment<'a>(input: &'a str) -> IResult<&'a str, (), VerboseError<&'a 
 fn parse_special<'a>(input: &'a str) -> ParseResult<'a> {
     context(
         "special",
-        map(
-            alt((tag("~@"), tag("'"), tag("`"), tag("~"), tag("^"), tag("@"))),
-            |i| MalAtom::Special(i),
-        ),
-    )(input)
-}
-
-pub fn parse_mal_atom<'a>(input: &'a str) -> ParseResult<'a> {
-    context(
-        "mal atom",
-        preceded(
-            alt((capture_whitespace, capture_comment)),
-            alt((
-                parse_bool,
-                parse_int,
-                parse_string,
-                parse_nil,
-                parse_special,
-                parse_symbol,
-                parse_sexp,
-            )),
-        ),
+        alt((
+            map(tag("~@"), |i| MalAtom::Special(i)),
+            map(preceded(char('\''), parse_mal_atom), |i| {
+                MalAtom::SExp(vec![MalAtom::Symbol("quote"), i])
+            }),
+            map(tag("`"), |i| MalAtom::Special(i)),
+            map(tag("~"), |i| MalAtom::Special(i)),
+            map(tag("^"), |i| MalAtom::Special(i)),
+            map(tag("@"), |i| MalAtom::Special(i)),
+        )),
     )(input)
 }
 
@@ -141,10 +148,27 @@ fn parse_sexp<'a>(input: &'a str) -> ParseResult<'a> {
                 many0(preceded(capture_whitespace, parse_mal_atom)),
                 cut(preceded(
                     capture_whitespace,
-                    context("closing )", char(')')),
+                    context("UNBALANCED", char(')')),
                 )),
             ),
             |s| MalAtom::SExp(s),
+        ),
+    )(input)
+}
+
+fn parse_vector<'a>(input: &'a str) -> ParseResult<'a> {
+    context(
+        "vector",
+        map(
+            delimited(
+                char('['),
+                many0(preceded(capture_whitespace, parse_mal_atom)),
+                cut(preceded(
+                    capture_whitespace,
+                    context("UNBALANCED", char(']')),
+                )),
+            ),
+            |v| MalAtom::Vector(v),
         ),
     )(input)
 }

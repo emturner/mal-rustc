@@ -7,6 +7,7 @@ extern crate quote;
 use quote::quote;
 
 extern crate nom;
+use nom::{error::*, Err};
 
 extern crate mal_rustc_core;
 use mal_rustc_core::{parser, MAL_RUNTIME};
@@ -44,7 +45,20 @@ fn compile_mal(input: &str) -> Result<String, String> {
 
         Ok(output)
     } else {
-        Err(format!("{:?}", parse_result))
+        let err = match parse_result {
+            Err(Err::Error(e)) | Err(Err::Failure(e)) => {
+                if e.errors
+                    .iter()
+                    .any(|e| VerboseErrorKind::Context("UNBALANCED") == e.1)
+                {
+                    "(EOF|end of input|unbalanced)".into()
+                } else {
+                    convert_error(input, e)
+                }
+            }
+            _ => "".into(),
+        };
+        Err(err)
     }
 }
 

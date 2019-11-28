@@ -11,6 +11,7 @@ pub enum MalAtom<'a> {
     Int(i64),
     Symbol(&'a str),
     SExp(Vec<MalAtom<'a>>),
+    Vector(Vec<MalAtom<'a>>),
 }
 
 impl<'a> Display for MalAtom<'a> {
@@ -37,6 +38,16 @@ impl<'a> Display for MalAtom<'a> {
                     .join(" ");
                 exps.fmt(f)?;
                 write!(f, ")")
+            }
+            MalAtom::Vector(v) => {
+                write!(f, "[")?;
+                let exps = v
+                    .iter()
+                    .map(|s| format!("{}", s))
+                    .collect::<Vec<String>>()
+                    .join(" ");
+                exps.fmt(f)?;
+                write!(f, "]")
             }
         }
     }
