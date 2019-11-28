@@ -22,8 +22,8 @@ impl<'a> Display for MalAtom<'a> {
             MalAtom::Special(s) => s.fmt(f),
             MalAtom::String(s) => format!(
                 "\"{}\"",
-                s.replace("\n", "\\n")
-                    .replace("\\", "\\\\")
+                s.replace("\\", "\\\\")
+                    .replace("\n", "\\n")
                     .replace("\"", "\\\"")
             )
             .fmt(f),
