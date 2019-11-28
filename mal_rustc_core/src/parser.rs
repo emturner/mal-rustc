@@ -127,12 +127,18 @@ fn parse_special<'a>(input: &'a str) -> ParseResult<'a> {
     context(
         "special",
         alt((
-            map(tag("~@"), |i| MalAtom::Special(i)),
+            map(preceded(tag("~@"), parse_mal_atom), |i| {
+                MalAtom::SExp(vec![MalAtom::Symbol("splice-unquote"), i])
+            }),
             map(preceded(char('\''), parse_mal_atom), |i| {
                 MalAtom::SExp(vec![MalAtom::Symbol("quote"), i])
             }),
-            map(tag("`"), |i| MalAtom::Special(i)),
-            map(tag("~"), |i| MalAtom::Special(i)),
+            map(preceded(char('`'), parse_mal_atom), |i| {
+                MalAtom::SExp(vec![MalAtom::Symbol("quasiquote"), i])
+            }),
+            map(preceded(char('~'), parse_mal_atom), |i| {
+                MalAtom::SExp(vec![MalAtom::Symbol("unquote"), i])
+            }),
             map(tag("^"), |i| MalAtom::Special(i)),
             map(tag("@"), |i| MalAtom::Special(i)),
         )),
