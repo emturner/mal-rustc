@@ -60,7 +60,7 @@ impl<'a> Display for MalAtom<'a> {
                     .map(|(k, v)| {
                         format!(
                             "{} {}",
-                            if k.starts_with(":") {
+                            if k.starts_with(':') {
                                 MalAtom::Keyword(k)
                             } else {
                                 MalAtom::String(k.into())

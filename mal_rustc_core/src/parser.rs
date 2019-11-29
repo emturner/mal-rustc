@@ -15,7 +15,7 @@ use std::collections::HashMap;
 
 type ParseResult<'a> = IResult<&'a str, MalAtom<'a>, VerboseError<&'a str>>;
 
-pub fn parse_mal_atom<'a>(input: &'a str) -> ParseResult<'a> {
+pub fn parse_mal_atom(input: &str) -> ParseResult {
     context(
         "mal atom",
         preceded(
@@ -36,7 +36,7 @@ pub fn parse_mal_atom<'a>(input: &'a str) -> ParseResult<'a> {
     )(input)
 }
 
-fn parse_nil<'a>(input: &'a str) -> ParseResult<'a> {
+fn parse_nil(input: &str) -> ParseResult {
     context(
         "nil",
         map(terminated(tag("nil"), peek(not(alphanumeric1))), |_| {
@@ -45,7 +45,7 @@ fn parse_nil<'a>(input: &'a str) -> ParseResult<'a> {
     )(input)
 }
 
-fn parse_true<'a>(input: &'a str) -> ParseResult<'a> {
+fn parse_true(input: &str) -> ParseResult {
     context(
         "true",
         map(terminated(tag("true"), peek(not(alphanumeric1))), |_| {
@@ -54,7 +54,7 @@ fn parse_true<'a>(input: &'a str) -> ParseResult<'a> {
     )(input)
 }
 
-fn parse_false<'a>(input: &'a str) -> ParseResult<'a> {
+fn parse_false(input: &str) -> ParseResult {
     context(
         "false",
         map(terminated(tag("false"), peek(not(alphanumeric1))), |_| {
@@ -63,7 +63,7 @@ fn parse_false<'a>(input: &'a str) -> ParseResult<'a> {
     )(input)
 }
 
-fn parse_symbol<'a>(input: &'a str) -> ParseResult<'a> {
+fn parse_symbol(input: &str) -> ParseResult {
     context(
         "symbol",
         map(
@@ -78,23 +78,23 @@ fn parse_symbol<'a>(input: &'a str) -> ParseResult<'a> {
     )(input)
 }
 
-fn parse_keyword<'a>(input: &'a str) -> ParseResult<'a> {
+fn parse_keyword(input: &str) -> ParseResult {
     context(
         "keyword",
         preceded(
             peek(char(':')),
-            map(take_till1(|c| "[]{}()'`~^@ ,".contains(c)), |i: &'a str| {
+            map(take_till1(|c| "[]{}()'`~^@ ,".contains(c)), |i: &str| {
                 MalAtom::Keyword(i)
             }),
         ),
     )(input)
 }
 
-fn parse_bool<'a>(input: &'a str) -> ParseResult<'a> {
+fn parse_bool(input: &str) -> ParseResult {
     context("bool", alt((parse_true, parse_false)))(input)
 }
 
-fn parse_string<'a>(input: &'a str) -> ParseResult<'a> {
+fn parse_string(input: &str) -> ParseResult {
     context(
         "string",
         map(
@@ -109,12 +109,12 @@ fn parse_string<'a>(input: &'a str) -> ParseResult<'a> {
                 })),
                 context("UNBALANCED", cut(tag("\""))),
             ),
-            |s| MalAtom::String(s.unwrap_or("".into())),
+            |s| MalAtom::String(s.unwrap_or_else(|| "".into())),
         ),
     )(input)
 }
 
-fn parse_int<'a>(input: &'a str) -> ParseResult<'a> {
+fn parse_int(input: &str) -> ParseResult {
     context(
         "int",
         map(
@@ -133,7 +133,7 @@ fn parse_int<'a>(input: &'a str) -> ParseResult<'a> {
 }
 
 // captures whitespace & commans (which count as whitespace in mal)
-fn capture_whitespace<'a>(input: &'a str) -> IResult<&'a str, (), VerboseError<&'a str>> {
+fn capture_whitespace(input: &str) -> IResult<&str, (), VerboseError<&str>> {
     context(
         "whitespace",
         map(many0(alt((space1, tag(","), line_ending))), |_| ()),
@@ -141,11 +141,11 @@ fn capture_whitespace<'a>(input: &'a str) -> IResult<&'a str, (), VerboseError<&
 }
 
 // captures comment
-fn capture_comment<'a>(input: &'a str) -> IResult<&'a str, (), VerboseError<&'a str>> {
+fn capture_comment(input: &str) -> IResult<&str, (), VerboseError<&str>> {
     context("comment", map(preceded(tag(";"), not_line_ending), |_| ()))(input)
 }
 
-fn parse_special<'a>(input: &'a str) -> ParseResult<'a> {
+fn parse_special(input: &str) -> ParseResult {
     context(
         "special",
         alt((
@@ -172,7 +172,7 @@ fn parse_special<'a>(input: &'a str) -> ParseResult<'a> {
     )(input)
 }
 
-fn parse_sexp<'a>(input: &'a str) -> ParseResult<'a> {
+fn parse_sexp(input: &str) -> ParseResult {
     context(
         "sexp",
         map(
@@ -184,12 +184,12 @@ fn parse_sexp<'a>(input: &'a str) -> ParseResult<'a> {
                     context("UNBALANCED", char(')')),
                 )),
             ),
-            |s| MalAtom::SExp(s),
+            MalAtom::SExp,
         ),
     )(input)
 }
 
-fn parse_vector<'a>(input: &'a str) -> ParseResult<'a> {
+fn parse_vector(input: &str) -> ParseResult {
     context(
         "vector",
         map(
@@ -201,12 +201,12 @@ fn parse_vector<'a>(input: &'a str) -> ParseResult<'a> {
                     context("UNBALANCED", char(']')),
                 )),
             ),
-            |v| MalAtom::Vector(v),
+            MalAtom::Vector,
         ),
     )(input)
 }
 
-fn parse_hash_map<'a>(input: &'a str) -> ParseResult<'a> {
+fn parse_hash_map(input: &str) -> ParseResult {
     context(
         "HashMap",
         map(
