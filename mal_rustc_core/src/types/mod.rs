@@ -24,7 +24,6 @@ impl<'a> ToTokens for MalAtom<'a> {
                 let mut hm_tokens = quote!(let mut hm = std::collections::HashMap::new(););
 
                 for (k, v) in h.into_iter() {
-                    let k = k.to_string();
                     hm_tokens.extend(quote!(hm.insert(#k.into(), #v);));
                 }
 

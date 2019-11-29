@@ -272,16 +272,6 @@ mod tests {
     }
 
     #[test]
-    fn parse_special_ok() {
-        assert_eq!(Ok(("", MalAtom::Special("~@"))), parse_special("~@"));
-        assert_eq!(Ok(("", MalAtom::Special("'"))), parse_special("'"));
-        assert_eq!(Ok(("", MalAtom::Special("`"))), parse_special("`"));
-        assert_eq!(Ok(("", MalAtom::Special("~"))), parse_special("~"));
-        assert_eq!(Ok(("", MalAtom::Special("^"))), parse_special("^"));
-        assert_eq!(Ok(("", MalAtom::Special("@"))), parse_special("@"));
-    }
-
-    #[test]
     fn capture_whitespace_ok() {
         assert_eq!(Ok(("", ())), capture_whitespace(""));
         assert_eq!(Ok(("", ())), capture_whitespace(" "));
