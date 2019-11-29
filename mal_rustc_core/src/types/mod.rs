@@ -17,16 +17,19 @@ impl<'a> ToTokens for MalAtom<'a> {
             MalAtom::SExp(sexp) => tokens.extend(quote!(MalAtom::SExp(vec![#(#sexp),*]))),
             MalAtom::Vector(v) => tokens.extend(quote!(MalAtom::Vector(vec![#(#v),*]))),
             MalAtom::Keyword(k) => tokens.extend(quote!(MalAtom::Keyword(#k))),
+            MalAtom::HashMap(h) if h.len() == 0 => {
+                tokens.extend(quote!(MalAtom::HashMap(std::collections::HashMap::new())))
+            }
             MalAtom::HashMap(h) => {
                 let mut hm_tokens = quote!(let mut hm = std::collections::HashMap::new(););
 
                 for (k, v) in h.into_iter() {
-                    hm_tokens.extend(quote!(hm.insert(#k, #v);));
+                    let k = k.to_string();
+                    hm_tokens.extend(quote!(hm.insert(#k.into(), #v);));
                 }
 
                 hm_tokens.extend(quote!(hm));
 
-                // put in group {}
                 tokens.extend(quote!(MalAtom::HashMap({#hm_tokens})))
             }
         }

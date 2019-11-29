@@ -14,7 +14,7 @@ pub enum MalAtom<'a> {
     SExp(Vec<MalAtom<'a>>),
     Vector(Vec<MalAtom<'a>>),
     Keyword(&'a str),
-    HashMap(HashMap<&'a str, MalAtom<'a>>),
+    HashMap(HashMap<String, MalAtom<'a>>),
 }
 
 impl<'a> Display for MalAtom<'a> {
@@ -57,7 +57,17 @@ impl<'a> Display for MalAtom<'a> {
                 write!(f, "{{")?;
                 let exps = h
                     .iter()
-                    .map(|(k, v)| format!("{} {}", k, v))
+                    .map(|(k, v)| {
+                        format!(
+                            "{} {}",
+                            if k.starts_with(":") {
+                                MalAtom::Keyword(k)
+                            } else {
+                                MalAtom::String(k.into())
+                            },
+                            v
+                        )
+                    })
                     .collect::<Vec<String>>()
                     .join(" ");
                 exps.fmt(f)?;
