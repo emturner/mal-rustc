@@ -11,6 +11,8 @@ use nom::{
 
 use crate::types::runtime::MalAtom;
 
+use std::collections::HashMap;
+
 type ParseResult<'a> = IResult<&'a str, MalAtom<'a>, VerboseError<&'a str>>;
 
 pub fn parse_mal_atom<'a>(input: &'a str) -> ParseResult<'a> {
@@ -24,9 +26,11 @@ pub fn parse_mal_atom<'a>(input: &'a str) -> ParseResult<'a> {
                 parse_string,
                 parse_nil,
                 parse_special,
+                parse_keyword,
                 parse_symbol,
                 parse_sexp,
                 parse_vector,
+                parse_hash_map,
             )),
         ),
     )(input)
@@ -65,6 +69,18 @@ fn parse_symbol<'a>(input: &'a str) -> ParseResult<'a> {
         map(take_till1(|c| "[]{}()'`~^@ ,".contains(c)), |i: &str| {
             MalAtom::Symbol(i)
         }),
+    )(input)
+}
+
+fn parse_keyword<'a>(input: &'a str) -> ParseResult<'a> {
+    context(
+        "keyword",
+        preceded(
+            peek(char(':')),
+            map(take_till1(|c| "[]{}()'`~^@ ,".contains(c)), |i: &'a str| {
+                MalAtom::Keyword(i)
+            }),
+        ),
     )(input)
 }
 
@@ -175,6 +191,42 @@ fn parse_vector<'a>(input: &'a str) -> ParseResult<'a> {
                 )),
             ),
             |v| MalAtom::Vector(v),
+        ),
+    )(input)
+}
+
+fn parse_hash_map<'a>(input: &'a str) -> ParseResult<'a> {
+    context(
+        "vector",
+        map(
+            delimited(
+                char('{'),
+                many0(pair(
+                    preceded(capture_whitespace, alt((parse_keyword, parse_symbol))),
+                    preceded(capture_whitespace, parse_mal_atom),
+                )),
+                cut(preceded(
+                    capture_whitespace,
+                    context("UNBALANCED", char('}')),
+                )),
+            ),
+            |h| {
+                let mut hm = HashMap::new();
+
+                for kv_pair in h {
+                    match kv_pair {
+                        (MalAtom::Keyword(k), a) => {
+                            hm.insert(k, a);
+                        }
+                        (MalAtom::Symbol(s), a) => {
+                            hm.insert(s, a);
+                        }
+                        _ => unreachable!(),
+                    }
+                }
+
+                MalAtom::HashMap(hm)
+            },
         ),
     )(input)
 }

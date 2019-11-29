@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::fmt::{self, Display};
 
 #[derive(Debug, PartialEq, Eq)]
@@ -12,6 +13,8 @@ pub enum MalAtom<'a> {
     Symbol(&'a str),
     SExp(Vec<MalAtom<'a>>),
     Vector(Vec<MalAtom<'a>>),
+    Keyword(&'a str),
+    HashMap(HashMap<&'a str, MalAtom<'a>>),
 }
 
 impl<'a> Display for MalAtom<'a> {
@@ -48,6 +51,17 @@ impl<'a> Display for MalAtom<'a> {
                     .join(" ");
                 exps.fmt(f)?;
                 write!(f, "]")
+            }
+            MalAtom::Keyword(k) => k.fmt(f),
+            MalAtom::HashMap(h) => {
+                write!(f, "{{")?;
+                let exps = h
+                    .iter()
+                    .map(|(k, v)| format!("{} {}", k, v))
+                    .collect::<Vec<String>>()
+                    .join(" ");
+                exps.fmt(f)?;
+                write!(f, "}}")
             }
         }
     }
