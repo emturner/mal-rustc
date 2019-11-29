@@ -1,6 +1,6 @@
 use nom::{
     branch::alt,
-    bytes::complete::{escaped_transform, tag, take_till1},
+    bytes::complete::*,
     character::complete::*,
     combinator::*,
     error::{context, VerboseError},
@@ -66,9 +66,15 @@ fn parse_false<'a>(input: &'a str) -> ParseResult<'a> {
 fn parse_symbol<'a>(input: &'a str) -> ParseResult<'a> {
     context(
         "symbol",
-        map(take_till1(|c| "[]{}()'`~^@ ,".contains(c)), |i: &str| {
-            MalAtom::Symbol(i)
-        }),
+        map(
+            preceded(
+                peek(not(parse_int)),
+                take_while1(|c: char| {
+                    (c.is_alphanumeric() || !"[]{}()'`~^@\",;:".contains(c)) && !c.is_whitespace()
+                }),
+            ),
+            |i: &str| MalAtom::Symbol(i),
+        ),
     )(input)
 }
 
@@ -155,8 +161,13 @@ fn parse_special<'a>(input: &'a str) -> ParseResult<'a> {
             map(preceded(char('~'), parse_mal_atom), |i| {
                 MalAtom::SExp(vec![MalAtom::Symbol("unquote"), i])
             }),
-            map(tag("^"), |i| MalAtom::Special(i)),
-            map(tag("@"), |i| MalAtom::Special(i)),
+            map(
+                preceded(char('^'), pair(parse_mal_atom, parse_mal_atom)),
+                |i| MalAtom::SExp(vec![MalAtom::Symbol("with-meta"), i.1, i.0]),
+            ),
+            map(preceded(char('@'), parse_mal_atom), |i| {
+                MalAtom::SExp(vec![MalAtom::Symbol("deref"), i])
+            }),
         )),
     )(input)
 }
@@ -197,13 +208,19 @@ fn parse_vector<'a>(input: &'a str) -> ParseResult<'a> {
 
 fn parse_hash_map<'a>(input: &'a str) -> ParseResult<'a> {
     context(
-        "vector",
+        "HashMap",
         map(
             delimited(
                 char('{'),
                 many0(pair(
-                    preceded(capture_whitespace, alt((parse_keyword, parse_symbol))),
-                    preceded(capture_whitespace, parse_mal_atom),
+                    preceded(
+                        capture_whitespace,
+                        preceded(
+                            peek(parse_mal_atom),
+                            cut(alt((parse_keyword, parse_string))),
+                        ),
+                    ),
+                    preceded(capture_whitespace, cut(parse_mal_atom)),
                 )),
                 cut(preceded(
                     capture_whitespace,
@@ -216,9 +233,9 @@ fn parse_hash_map<'a>(input: &'a str) -> ParseResult<'a> {
                 for kv_pair in h {
                     match kv_pair {
                         (MalAtom::Keyword(k), a) => {
-                            hm.insert(k, a);
+                            hm.insert(k.into(), a);
                         }
-                        (MalAtom::Symbol(s), a) => {
+                        (MalAtom::String(s), a) => {
                             hm.insert(s, a);
                         }
                         _ => unreachable!(),
