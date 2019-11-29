@@ -2,4 +2,6 @@
 
 members = [
     "step0_repl", 
+    "step1_read_print",
+    "mal_rustc_core"
 ]
