@@ -1,0 +1,12 @@
+[package]
+name = "step2_eval"
+version = "0.1.0"
+authors = ["emturner <em.turner@tutanota.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+quote = "1.0"
+nom = "5.0"
+mal_rustc_core = { path = "../mal_rustc_core" }
