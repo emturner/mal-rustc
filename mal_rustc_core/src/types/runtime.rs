@@ -1,6 +1,8 @@
 use std::collections::HashMap;
 use std::fmt::{self, Display};
 
+type MalResult<'a> = Result<MalAtom<'a>, String>;
+
 #[derive(Debug, PartialEq, Eq)]
 pub enum MalAtom<'a> {
     Nil,
@@ -73,6 +75,17 @@ impl<'a> Display for MalAtom<'a> {
                 exps.fmt(f)?;
                 write!(f, "}}")
             }
+        }
+    }
+}
+
+impl<'a> std::ops::Add for MalAtom<'a> {
+    type Output = MalResult<'a>;
+
+    fn add(self, other: Self) -> MalResult<'a> {
+        match (self, other) {
+            (MalAtom::Int(s), MalAtom::Int(o)) => Ok(MalAtom::Int(s + o)),
+            _ => Err("Expected two ints".into()),
         }
     }
 }

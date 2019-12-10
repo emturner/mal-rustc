@@ -123,6 +123,7 @@ version = "0.1.0"
 dependencies = [
  "mal_rustc_core 0.1.0",
  "nom 5.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "proc-macro2 1.0.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "quote 1.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 

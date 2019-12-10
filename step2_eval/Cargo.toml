@@ -9,4 +9,5 @@ edition = "2018"
 [dependencies]
 quote = "1.0"
 nom = "5.0"
+proc-macro2 = "1.0"
 mal_rustc_core = { path = "../mal_rustc_core" }
