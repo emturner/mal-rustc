@@ -105,8 +105,22 @@ pub fn lower(ast: &MalAtomComp, env: &HashMap<&str, MalFuncCallTemplate>) -> Tok
     match ast {
         MalAtomComp::SExp(ref s) if !s.is_empty() => lower_sexp(s, env),
         MalAtomComp::Vector(ref v) => lower_vector(v, env),
+        MalAtomComp::HashMap(ref h) => lower_hashmap(h, env),
         ast => quote!(#ast),
     }
+}
+
+fn lower_hashmap<'a>(h: &HashMap<String, MalAtomComp<'a>>, env: &HashMap<&str, MalFuncCallTemplate>) -> TokenStream {
+    let mut hm_tokens = quote!(let mut hm = std::collections::HashMap::new(););
+
+    for (k, v) in h.iter() {
+        let v = lower(v, env);
+        hm_tokens.extend(quote!(hm.insert(#k.into(), #v);));
+    }
+
+    hm_tokens.extend(quote!(hm));
+
+    quote!(MalAtom::HashMap({#hm_tokens}))
 }
 
 fn lower_vector(v: &[MalAtomComp], env: &HashMap<&str, MalFuncCallTemplate>) -> TokenStream {
