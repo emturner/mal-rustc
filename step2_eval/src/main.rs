@@ -24,7 +24,11 @@ fn main() {
         let mut input = String::new();
         match io::stdin().read_line(&mut input) {
             Ok(0) => break,
-            Ok(_) => rep(&input),
+            Ok(_) => {
+                if !input.chars().all(|c| c.is_whitespace()) {
+                    rep(&input)
+                }
+            },
             Err(e) => {
                 println!("{}", e);
                 break;
@@ -33,18 +37,44 @@ fn main() {
     }
 }
 
+fn create_core_env<'a>() -> HashMap<&'a str, MalFuncCallTemplate<'a>> {
+    let mut env = HashMap::new();
+    env.insert(
+        "+",
+        MalFuncCallTemplate {
+            name: "mal_builtin_plus",
+            num_args: MalArgCount::Many,
+        },
+    );
+    env.insert(
+        "-",
+        MalFuncCallTemplate {
+            name: "mal_builtin_sub",
+            num_args: MalArgCount::Many,
+        },
+    );
+    env.insert(
+        "*",
+        MalFuncCallTemplate {
+            name: "mal_builtin_mul",
+            num_args: MalArgCount::Many,
+        },
+    );
+    env.insert(
+        "/",
+        MalFuncCallTemplate {
+            name: "mal_builtin_div",
+            num_args: MalArgCount::Many,
+        },
+    );
+    env
+}
+
 fn compile_mal(input: &str) -> Result<String, String> {
     let parse_result = parser::parse_mal_atom(input);
 
     if let Ok((_, ast)) = parse_result {
-        let mut env = HashMap::new();
-        env.insert(
-            "+".into(),
-            MalFuncCallTemplate {
-                name: "mal_builtin_plus",
-                num_args: MalArgCount::Many,
-            },
-        );
+        let env = create_core_env();
         let rust_tokens = lower(&ast, &env);
 
         let output = format!(

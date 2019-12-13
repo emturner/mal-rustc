@@ -95,7 +95,7 @@ impl<'a> ToTokens for MalFuncCall<'a> {
             MalArgCount::Many => {
                 let name = format_ident!("{}", self.template.name);
                 let args = &self.args;
-                tokens.extend(quote!(#name(vec![#(#args),*])?))
+                tokens.extend(quote!(#name(vec![#(&#args),*])?))
             }
             _ => unimplemented!(),
         }

@@ -3,7 +3,7 @@ use std::fmt::{self, Display};
 
 pub type MalResult = Result<MalAtom, String>;
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum MalAtom {
     Nil,
     Bool(bool),
@@ -79,10 +79,10 @@ impl<'a> Display for MalAtom {
     }
 }
 
-impl std::ops::Add for MalAtom {
+impl<'a> std::ops::Add<&'a MalAtom> for MalAtom {
     type Output = MalResult;
 
-    fn add(self, other: Self) -> MalResult {
+    fn add(self, other: &'a MalAtom) -> MalResult {
         match (self, other) {
             (MalAtom::Int(s), MalAtom::Int(o)) => Ok(MalAtom::Int(s + o)),
             _ => Err("Expected two ints".into()),
@@ -90,7 +90,63 @@ impl std::ops::Add for MalAtom {
     }
 }
 
-pub fn mal_builtin_plus(args: Vec<MalAtom>) -> MalResult {
+pub fn mal_builtin_plus(args: Vec<&MalAtom>) -> MalResult {
     args.into_iter()
         .fold(Ok(MalAtom::Int(0)), |acc, next| acc? + next)
+}
+
+impl<'a> std::ops::Mul<&'a MalAtom> for MalAtom {
+    type Output = MalResult;
+
+    fn mul(self, other: &'a MalAtom) -> MalResult {
+        match (self, other) {
+            (MalAtom::Int(s), MalAtom::Int(o)) => Ok(MalAtom::Int(s * o)),
+            _ => Err("Expected two ints".into()),
+        }
+    }
+}
+
+pub fn mal_builtin_mul(args: Vec<&MalAtom>) -> MalResult {
+    args.into_iter()
+        .fold(Ok(MalAtom::Int(1)), |acc, next| acc? * next)
+}
+
+impl<'a> std::ops::Div<&'a MalAtom> for MalAtom {
+    type Output = MalResult;
+
+    fn div(self, other: &'a MalAtom) -> MalResult {
+        match (self, other) {
+            (MalAtom::Int(s), MalAtom::Int(o)) => Ok(MalAtom::Int(s / o)),
+            _ => Err("Expected two ints".into()),
+        }
+    }
+}
+
+pub fn mal_builtin_div(args: Vec<&MalAtom>) -> MalResult {
+    if args.is_empty() {
+        Ok(MalAtom::Int(1))
+    } else {
+        args[1..].into_iter()
+            .fold(Ok(args[0].clone()), |acc, next| acc? / next)
+    }
+}
+
+impl<'a> std::ops::Sub<&'a MalAtom> for MalAtom {
+    type Output = MalResult;
+
+    fn sub(self, other: &'a MalAtom) -> MalResult {
+        match (self, other) {
+            (MalAtom::Int(s), MalAtom::Int(o)) => Ok(MalAtom::Int(s - o)),
+            _ => Err("Expected two ints".into()),
+        }
+    }
+}
+
+pub fn mal_builtin_sub(args: Vec<&MalAtom>) -> MalResult {
+    if args.is_empty() { 
+        Ok(MalAtom::Int(0))
+    } else {
+        args[1..].into_iter()
+            .fold(Ok(args[0].clone()), |acc, next| acc? - next)
+    }
 }
