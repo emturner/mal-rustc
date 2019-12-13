@@ -84,7 +84,7 @@ impl<'a> MalFuncCall<'a> {
     pub fn new(func: &'a MalFuncCallTemplate<'a>, args: Vec<TokenStream>) -> MalFuncCall<'a> {
         Self {
             template: func,
-            args: args,
+            args,
         }
     }
 }
@@ -101,6 +101,41 @@ impl<'a> ToTokens for MalFuncCall<'a> {
         }
     }
 }
+
+pub fn create_core_env<'a>() -> HashMap<&'a str, MalFuncCallTemplate<'a>> {
+    let mut env = HashMap::new();
+    env.insert(
+        "+",
+        MalFuncCallTemplate {
+            name: "mal_builtin_plus",
+            num_args: MalArgCount::Many,
+        },
+    );
+    env.insert(
+        "-",
+        MalFuncCallTemplate {
+            name: "mal_builtin_sub",
+            num_args: MalArgCount::Many,
+        },
+    );
+    env.insert(
+        "*",
+        MalFuncCallTemplate {
+            name: "mal_builtin_mul",
+            num_args: MalArgCount::Many,
+        },
+    );
+    env.insert(
+        "/",
+        MalFuncCallTemplate {
+            name: "mal_builtin_div",
+            num_args: MalArgCount::Many,
+        },
+    );
+    env
+}
+
+#[allow(clippy::implicit_hasher)]
 pub fn lower(ast: &MalAtomComp, env: &HashMap<&str, MalFuncCallTemplate>) -> TokenStream {
     match ast {
         MalAtomComp::SExp(ref s) if !s.is_empty() => lower_sexp(s, env),
@@ -110,7 +145,10 @@ pub fn lower(ast: &MalAtomComp, env: &HashMap<&str, MalFuncCallTemplate>) -> Tok
     }
 }
 
-fn lower_hashmap<'a>(h: &HashMap<String, MalAtomComp<'a>>, env: &HashMap<&str, MalFuncCallTemplate>) -> TokenStream {
+fn lower_hashmap<'a>(
+    h: &HashMap<String, MalAtomComp<'a>>,
+    env: &HashMap<&str, MalFuncCallTemplate>,
+) -> TokenStream {
     let mut hm_tokens = quote!(let mut hm = std::collections::HashMap::new(););
 
     for (k, v) in h.iter() {

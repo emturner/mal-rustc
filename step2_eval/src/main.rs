@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::fs;
 use std::io::{self, Write};
 use std::path::Path;
@@ -8,7 +7,6 @@ extern crate quote;
 use quote::quote;
 
 extern crate proc_macro2;
-use proc_macro2::TokenStream;
 
 extern crate nom;
 use nom::{error::*, Err};
@@ -28,46 +26,13 @@ fn main() {
                 if !input.chars().all(|c| c.is_whitespace()) {
                     rep(&input)
                 }
-            },
+            }
             Err(e) => {
                 println!("{}", e);
                 break;
             }
         }
     }
-}
-
-fn create_core_env<'a>() -> HashMap<&'a str, MalFuncCallTemplate<'a>> {
-    let mut env = HashMap::new();
-    env.insert(
-        "+",
-        MalFuncCallTemplate {
-            name: "mal_builtin_plus",
-            num_args: MalArgCount::Many,
-        },
-    );
-    env.insert(
-        "-",
-        MalFuncCallTemplate {
-            name: "mal_builtin_sub",
-            num_args: MalArgCount::Many,
-        },
-    );
-    env.insert(
-        "*",
-        MalFuncCallTemplate {
-            name: "mal_builtin_mul",
-            num_args: MalArgCount::Many,
-        },
-    );
-    env.insert(
-        "/",
-        MalFuncCallTemplate {
-            name: "mal_builtin_div",
-            num_args: MalArgCount::Many,
-        },
-    );
-    env
 }
 
 fn compile_mal(input: &str) -> Result<String, String> {

@@ -126,7 +126,8 @@ pub fn mal_builtin_div(args: Vec<&MalAtom>) -> MalResult {
     if args.is_empty() {
         Ok(MalAtom::Int(1))
     } else {
-        args[1..].into_iter()
+        args[1..]
+            .iter()
             .fold(Ok(args[0].clone()), |acc, next| acc? / next)
     }
 }
@@ -143,10 +144,11 @@ impl<'a> std::ops::Sub<&'a MalAtom> for MalAtom {
 }
 
 pub fn mal_builtin_sub(args: Vec<&MalAtom>) -> MalResult {
-    if args.is_empty() { 
+    if args.is_empty() {
         Ok(MalAtom::Int(0))
     } else {
-        args[1..].into_iter()
+        args[1..]
+            .iter()
             .fold(Ok(args[0].clone()), |acc, next| acc? - next)
     }
 }
