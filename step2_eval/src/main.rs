@@ -14,7 +14,7 @@ extern crate nom;
 use nom::{error::*, Err};
 
 extern crate mal_rustc_core;
-use mal_rustc_core::{parser, MAL_RUNTIME, types::{MalAtom, MalFuncCallTemplate, MalResultComp, MalFuncCall}};
+use mal_rustc_core::{parser, types::*, MAL_RUNTIME};
 
 fn main() {
     loop {
@@ -37,15 +37,28 @@ fn compile_mal(input: &str) -> Result<String, String> {
     let parse_result = parser::parse_mal_atom(input);
 
     if let Ok((_, ast)) = parse_result {
-        let env = HashMap::new();
-        let rust_tokens = lower(ast, &env);
+        let mut env = HashMap::new();
+        env.insert(
+            "+".into(),
+            MalFuncCallTemplate {
+                name: "mal_builtin_plus",
+                num_args: MalArgCount::Many,
+            },
+        );
+        let rust_tokens = lower(&ast, &env);
 
         let output = format!(
             "{}\r\n{}",
             MAL_RUNTIME,
             quote!(
+                fn mal_main() -> MalResult {
+                    Ok(#rust_tokens)
+                }
                 fn main() {
-                    println!("{}", #rust_tokens);
+                    match mal_main() {
+                        Ok(ok) => println!("{}", ok),
+                        Err(err) => println!("{}", err),
+                    }
                 }
             )
         );
@@ -85,31 +98,4 @@ fn rep(input: &str) {
         }
         Err(e) => println!("{}", e),
     }
-}
-
-fn lower(ast: MalAtom, env: &HashMap<&str, MalFuncCallTemplate>) -> TokenStream {
-    match ast {
-        MalAtom::SExp(ref s) if !s.is_empty() => lower_sexp(s, env),
-        ast => quote!(#ast),
-    }
-}
-
-fn lower_sexp(sexp: &[MalAtom], env: &HashMap<&str, MalFuncCallTemplate>) -> TokenStream {
-    if let MalAtom::Symbol(s) = sexp[0] {
-        match env.get(s) {
-            Some(func) => lower_mal_func_call_template(func, &sexp[1..]),
-            None => {
-                let err = MalResultComp::Err(format!("Function '{}' not defined", s));
-                quote!(#err)
-            }
-        }
-    } else {
-        let err = MalResultComp::Err("Expected a function".into());
-        quote!(#err)
-    }
-}
-
-fn lower_mal_func_call_template(func: &MalFuncCallTemplate, args: &[MalAtom]) -> TokenStream {
-    let call = MalFuncCall::new(func, args);
-    quote!(#call)
 }

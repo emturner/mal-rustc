@@ -1,25 +1,25 @@
 use std::collections::HashMap;
 use std::fmt::{self, Display};
 
-type MalResult<'a> = Result<MalAtom<'a>, String>;
+pub type MalResult = Result<MalAtom, String>;
 
 #[derive(Debug, PartialEq, Eq)]
-pub enum MalAtom<'a> {
+pub enum MalAtom {
     Nil,
     Bool(bool),
-    Special(&'a str),
+    Special(String),
     // ideally this would be &'a str, but we need to escape the control characters
     // so need to allocate a new string
     String(String),
     Int(i64),
-    Symbol(&'a str),
-    SExp(Vec<MalAtom<'a>>),
-    Vector(Vec<MalAtom<'a>>),
-    Keyword(&'a str),
-    HashMap(HashMap<String, MalAtom<'a>>),
+    Symbol(String),
+    SExp(Vec<MalAtom>),
+    Vector(Vec<MalAtom>),
+    Keyword(String),
+    HashMap(HashMap<String, MalAtom>),
 }
 
-impl<'a> Display for MalAtom<'a> {
+impl<'a> Display for MalAtom {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             MalAtom::Nil => write!(f, "nil"),
@@ -63,7 +63,7 @@ impl<'a> Display for MalAtom<'a> {
                         format!(
                             "{} {}",
                             if k.starts_with(':') {
-                                MalAtom::Keyword(k)
+                                MalAtom::Keyword(k.to_string())
                             } else {
                                 MalAtom::String(k.into())
                             },
@@ -79,13 +79,18 @@ impl<'a> Display for MalAtom<'a> {
     }
 }
 
-impl<'a> std::ops::Add for MalAtom<'a> {
-    type Output = MalResult<'a>;
+impl std::ops::Add for MalAtom {
+    type Output = MalResult;
 
-    fn add(self, other: Self) -> MalResult<'a> {
+    fn add(self, other: Self) -> MalResult {
         match (self, other) {
             (MalAtom::Int(s), MalAtom::Int(o)) => Ok(MalAtom::Int(s + o)),
             _ => Err("Expected two ints".into()),
         }
     }
+}
+
+pub fn mal_builtin_plus(args: Vec<MalAtom>) -> MalResult {
+    args.into_iter()
+        .fold(Ok(MalAtom::Int(0)), |acc, next| acc? + next)
 }
