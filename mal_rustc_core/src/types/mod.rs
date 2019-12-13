@@ -104,8 +104,14 @@ impl<'a> ToTokens for MalFuncCall<'a> {
 pub fn lower(ast: &MalAtomComp, env: &HashMap<&str, MalFuncCallTemplate>) -> TokenStream {
     match ast {
         MalAtomComp::SExp(ref s) if !s.is_empty() => lower_sexp(s, env),
+        MalAtomComp::Vector(ref v) => lower_vector(v, env),
         ast => quote!(#ast),
     }
+}
+
+fn lower_vector(v: &[MalAtomComp], env: &HashMap<&str, MalFuncCallTemplate>) -> TokenStream {
+    let elements = v.iter().map(|e| lower(e, env));
+    quote!(MalAtom::Vector(vec![#(#elements),*]))
 }
 
 fn lower_sexp(sexp: &[MalAtomComp], env: &HashMap<&str, MalFuncCallTemplate>) -> TokenStream {
