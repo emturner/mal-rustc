@@ -12,7 +12,7 @@ extern crate nom;
 use nom::{error::*, Err};
 
 extern crate mal_rustc_core;
-use mal_rustc_core::{parser, types::*, MAL_RUNTIME};
+use mal_rustc_core::{parser, comp::*, MAL_RUNTIME};
 
 fn main() {
     loop {
