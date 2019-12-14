@@ -9,11 +9,11 @@ use nom::{
     IResult,
 };
 
-use crate::types::runtime::MalAtom;
+use crate::types::MalAtomComp;
 
 use std::collections::HashMap;
 
-type ParseResult<'a> = IResult<&'a str, MalAtom<'a>, VerboseError<&'a str>>;
+type ParseResult<'a> = IResult<&'a str, MalAtomComp<'a>, VerboseError<&'a str>>;
 
 pub fn parse_mal_atom(input: &str) -> ParseResult {
     context(
@@ -40,7 +40,7 @@ fn parse_nil(input: &str) -> ParseResult {
     context(
         "nil",
         map(terminated(tag("nil"), peek(not(alphanumeric1))), |_| {
-            MalAtom::Nil
+            MalAtomComp::Nil
         }),
     )(input)
 }
@@ -49,7 +49,7 @@ fn parse_true(input: &str) -> ParseResult {
     context(
         "true",
         map(terminated(tag("true"), peek(not(alphanumeric1))), |_| {
-            MalAtom::Bool(true)
+            MalAtomComp::Bool(true)
         }),
     )(input)
 }
@@ -58,7 +58,7 @@ fn parse_false(input: &str) -> ParseResult {
     context(
         "false",
         map(terminated(tag("false"), peek(not(alphanumeric1))), |_| {
-            MalAtom::Bool(false)
+            MalAtomComp::Bool(false)
         }),
     )(input)
 }
@@ -73,7 +73,7 @@ fn parse_symbol(input: &str) -> ParseResult {
                     (c.is_alphanumeric() || !"[]{}()'`~^@\",;:".contains(c)) && !c.is_whitespace()
                 }),
             ),
-            |i: &str| MalAtom::Symbol(i),
+            |i: &str| MalAtomComp::Symbol(i),
         ),
     )(input)
 }
@@ -84,7 +84,7 @@ fn parse_keyword(input: &str) -> ParseResult {
         preceded(
             peek(char(':')),
             map(take_till1(|c| "[]{}()'`~^@ ,".contains(c)), |i: &str| {
-                MalAtom::Keyword(i)
+                MalAtomComp::Keyword(i)
             }),
         ),
     )(input)
@@ -109,7 +109,7 @@ fn parse_string(input: &str) -> ParseResult {
                 })),
                 context("UNBALANCED", cut(tag("\""))),
             ),
-            |s| MalAtom::String(s.unwrap_or_else(|| "".into())),
+            |s| MalAtomComp::String(s.unwrap_or_else(|| "".into())),
         ),
     )(input)
 }
@@ -120,9 +120,9 @@ fn parse_int(input: &str) -> ParseResult {
         map(
             terminated(
                 alt((
-                    map_res(digit1, |i: &str| i.parse::<i64>().map(MalAtom::Int)),
+                    map_res(digit1, |i: &str| i.parse::<i64>().map(MalAtomComp::Int)),
                     map_res(preceded(tag("-"), digit1), |i: &str| {
-                        i.parse::<i64>().map(|i| MalAtom::Int(-i))
+                        i.parse::<i64>().map(|i| MalAtomComp::Int(-i))
                     }),
                 )),
                 peek(not(alpha1)),
@@ -150,23 +150,23 @@ fn parse_special(input: &str) -> ParseResult {
         "special",
         alt((
             map(preceded(tag("~@"), parse_mal_atom), |i| {
-                MalAtom::SExp(vec![MalAtom::Symbol("splice-unquote"), i])
+                MalAtomComp::SExp(vec![MalAtomComp::Symbol("splice-unquote"), i])
             }),
             map(preceded(char('\''), parse_mal_atom), |i| {
-                MalAtom::SExp(vec![MalAtom::Symbol("quote"), i])
+                MalAtomComp::SExp(vec![MalAtomComp::Symbol("quote"), i])
             }),
             map(preceded(char('`'), parse_mal_atom), |i| {
-                MalAtom::SExp(vec![MalAtom::Symbol("quasiquote"), i])
+                MalAtomComp::SExp(vec![MalAtomComp::Symbol("quasiquote"), i])
             }),
             map(preceded(char('~'), parse_mal_atom), |i| {
-                MalAtom::SExp(vec![MalAtom::Symbol("unquote"), i])
+                MalAtomComp::SExp(vec![MalAtomComp::Symbol("unquote"), i])
             }),
             map(
                 preceded(char('^'), pair(parse_mal_atom, parse_mal_atom)),
-                |i| MalAtom::SExp(vec![MalAtom::Symbol("with-meta"), i.1, i.0]),
+                |i| MalAtomComp::SExp(vec![MalAtomComp::Symbol("with-meta"), i.1, i.0]),
             ),
             map(preceded(char('@'), parse_mal_atom), |i| {
-                MalAtom::SExp(vec![MalAtom::Symbol("deref"), i])
+                MalAtomComp::SExp(vec![MalAtomComp::Symbol("deref"), i])
             }),
         )),
     )(input)
@@ -184,7 +184,7 @@ fn parse_sexp(input: &str) -> ParseResult {
                     context("UNBALANCED", char(')')),
                 )),
             ),
-            MalAtom::SExp,
+            MalAtomComp::SExp,
         ),
     )(input)
 }
@@ -201,7 +201,7 @@ fn parse_vector(input: &str) -> ParseResult {
                     context("UNBALANCED", char(']')),
                 )),
             ),
-            MalAtom::Vector,
+            MalAtomComp::Vector,
         ),
     )(input)
 }
@@ -232,17 +232,17 @@ fn parse_hash_map(input: &str) -> ParseResult {
 
                 for kv_pair in h {
                     match kv_pair {
-                        (MalAtom::Keyword(k), a) => {
+                        (MalAtomComp::Keyword(k), a) => {
                             hm.insert(k.into(), a);
                         }
-                        (MalAtom::String(s), a) => {
+                        (MalAtomComp::String(s), a) => {
                             hm.insert(s, a);
                         }
                         _ => unreachable!(),
                     }
                 }
 
-                MalAtom::HashMap(hm)
+                MalAtomComp::HashMap(hm)
             },
         ),
     )(input)
@@ -255,7 +255,7 @@ mod tests {
     #[test]
     fn parse_symbol_ok() {
         assert_eq!(
-            Ok((" world", MalAtom::Symbol("hello"))),
+            Ok((" world", MalAtomComp::Symbol("hello"))),
             parse_symbol("hello world")
         );
     }
@@ -284,10 +284,10 @@ mod tests {
 
     #[test]
     fn parse_int_ok() {
-        assert_eq!(Ok(("", MalAtom::Int(0))), parse_int("0"));
-        assert_eq!(Ok(("", MalAtom::Int(1304))), parse_int("1304"));
+        assert_eq!(Ok(("", MalAtomComp::Int(0))), parse_int("0"));
+        assert_eq!(Ok(("", MalAtomComp::Int(1304))), parse_int("1304"));
 
-        assert_eq!(Ok(("", MalAtom::Int(-290))), parse_int("-290"));
+        assert_eq!(Ok(("", MalAtomComp::Int(-290))), parse_int("-290"));
     }
 
     #[test]
@@ -298,9 +298,9 @@ mod tests {
 
     #[test]
     fn parse_nil_ok() {
-        assert_eq!(Ok(("", MalAtom::Nil)), parse_nil("nil"));
-        assert_eq!(Ok((" ", MalAtom::Nil)), parse_nil("nil "));
-        assert_eq!(Ok((",hey", MalAtom::Nil)), parse_nil("nil,hey"));
+        assert_eq!(Ok(("", MalAtomComp::Nil)), parse_nil("nil"));
+        assert_eq!(Ok((" ", MalAtomComp::Nil)), parse_nil("nil "));
+        assert_eq!(Ok((",hey", MalAtomComp::Nil)), parse_nil("nil,hey"));
     }
 
     #[test]
@@ -312,9 +312,12 @@ mod tests {
 
     #[test]
     fn parse_true_ok() {
-        assert_eq!(Ok(("", MalAtom::Bool(true))), parse_true("true"));
-        assert_eq!(Ok((" ", MalAtom::Bool(true))), parse_true("true "));
-        assert_eq!(Ok((",hey", MalAtom::Bool(true))), parse_true("true,hey"));
+        assert_eq!(Ok(("", MalAtomComp::Bool(true))), parse_true("true"));
+        assert_eq!(Ok((" ", MalAtomComp::Bool(true))), parse_true("true "));
+        assert_eq!(
+            Ok((",hey", MalAtomComp::Bool(true))),
+            parse_true("true,hey")
+        );
     }
 
     #[test]
@@ -326,9 +329,12 @@ mod tests {
 
     #[test]
     fn parse_false_ok() {
-        assert_eq!(Ok(("", MalAtom::Bool(false))), parse_false("false"));
-        assert_eq!(Ok((" ", MalAtom::Bool(false))), parse_false("false "));
-        assert_eq!(Ok((",hey", MalAtom::Bool(false))), parse_false("false,hey"));
+        assert_eq!(Ok(("", MalAtomComp::Bool(false))), parse_false("false"));
+        assert_eq!(Ok((" ", MalAtomComp::Bool(false))), parse_false("false "));
+        assert_eq!(
+            Ok((",hey", MalAtomComp::Bool(false))),
+            parse_false("false,hey")
+        );
     }
 
     #[test]
@@ -340,31 +346,37 @@ mod tests {
 
     #[test]
     fn parse_book_ok() {
-        assert_eq!(Ok(("", MalAtom::Bool(false))), parse_bool("false"));
-        assert_eq!(Ok(("", MalAtom::Bool(true))), parse_bool("true"));
+        assert_eq!(Ok(("", MalAtomComp::Bool(false))), parse_bool("false"));
+        assert_eq!(Ok(("", MalAtomComp::Bool(true))), parse_bool("true"));
     }
 
     #[test]
     fn parse_string_ok() {
-        assert_eq!(Ok(("", MalAtom::String("".into()))), parse_string("\"\""));
-        assert_eq!(Ok(("a", MalAtom::String("".into()))), parse_string("\"\"a"));
         assert_eq!(
-            Ok(("", MalAtom::String("h3llo, World!".into()))),
+            Ok(("", MalAtomComp::String("".into()))),
+            parse_string("\"\"")
+        );
+        assert_eq!(
+            Ok(("a", MalAtomComp::String("".into()))),
+            parse_string("\"\"a")
+        );
+        assert_eq!(
+            Ok(("", MalAtomComp::String("h3llo, World!".into()))),
             parse_string("\"h3llo, World!\"")
         );
 
         assert_eq!(
-            Ok(("", MalAtom::String("\"".into()))),
+            Ok(("", MalAtomComp::String("\"".into()))),
             parse_string(r#""\"""#)
         );
 
         assert_eq!(
-            Ok(("", MalAtom::String("\n".into()))),
+            Ok(("", MalAtomComp::String("\n".into()))),
             parse_string(r#""\n""#)
         );
 
         assert_eq!(
-            Ok(("", MalAtom::String("\\".into()))),
+            Ok(("", MalAtomComp::String("\\".into()))),
             parse_string(r#""\\""#)
         );
     }

@@ -1,23 +1,25 @@
 use std::collections::HashMap;
 use std::fmt::{self, Display};
 
-#[derive(Debug, PartialEq, Eq)]
-pub enum MalAtom<'a> {
+pub type MalResult = Result<MalAtom, String>;
+
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub enum MalAtom {
     Nil,
     Bool(bool),
-    Special(&'a str),
+    Special(String),
     // ideally this would be &'a str, but we need to escape the control characters
     // so need to allocate a new string
     String(String),
     Int(i64),
-    Symbol(&'a str),
-    SExp(Vec<MalAtom<'a>>),
-    Vector(Vec<MalAtom<'a>>),
-    Keyword(&'a str),
-    HashMap(HashMap<String, MalAtom<'a>>),
+    Symbol(String),
+    SExp(Vec<MalAtom>),
+    Vector(Vec<MalAtom>),
+    Keyword(String),
+    HashMap(HashMap<String, MalAtom>),
 }
 
-impl<'a> Display for MalAtom<'a> {
+impl<'a> Display for MalAtom {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             MalAtom::Nil => write!(f, "nil"),
@@ -61,7 +63,7 @@ impl<'a> Display for MalAtom<'a> {
                         format!(
                             "{} {}",
                             if k.starts_with(':') {
-                                MalAtom::Keyword(k)
+                                MalAtom::Keyword(k.to_string())
                             } else {
                                 MalAtom::String(k.into())
                             },
@@ -74,5 +76,79 @@ impl<'a> Display for MalAtom<'a> {
                 write!(f, "}}")
             }
         }
+    }
+}
+
+impl<'a> std::ops::Add<&'a MalAtom> for MalAtom {
+    type Output = MalResult;
+
+    fn add(self, other: &'a MalAtom) -> MalResult {
+        match (self, other) {
+            (MalAtom::Int(s), MalAtom::Int(o)) => Ok(MalAtom::Int(s + o)),
+            _ => Err("Expected two ints".into()),
+        }
+    }
+}
+
+pub fn mal_builtin_plus(args: Vec<&MalAtom>) -> MalResult {
+    args.into_iter()
+        .fold(Ok(MalAtom::Int(0)), |acc, next| acc? + next)
+}
+
+impl<'a> std::ops::Mul<&'a MalAtom> for MalAtom {
+    type Output = MalResult;
+
+    fn mul(self, other: &'a MalAtom) -> MalResult {
+        match (self, other) {
+            (MalAtom::Int(s), MalAtom::Int(o)) => Ok(MalAtom::Int(s * o)),
+            _ => Err("Expected two ints".into()),
+        }
+    }
+}
+
+pub fn mal_builtin_mul(args: Vec<&MalAtom>) -> MalResult {
+    args.into_iter()
+        .fold(Ok(MalAtom::Int(1)), |acc, next| acc? * next)
+}
+
+impl<'a> std::ops::Div<&'a MalAtom> for MalAtom {
+    type Output = MalResult;
+
+    fn div(self, other: &'a MalAtom) -> MalResult {
+        match (self, other) {
+            (MalAtom::Int(s), MalAtom::Int(o)) => Ok(MalAtom::Int(s / o)),
+            _ => Err("Expected two ints".into()),
+        }
+    }
+}
+
+pub fn mal_builtin_div(args: Vec<&MalAtom>) -> MalResult {
+    if args.is_empty() {
+        Ok(MalAtom::Int(1))
+    } else {
+        args[1..]
+            .iter()
+            .fold(Ok(args[0].clone()), |acc, next| acc? / next)
+    }
+}
+
+impl<'a> std::ops::Sub<&'a MalAtom> for MalAtom {
+    type Output = MalResult;
+
+    fn sub(self, other: &'a MalAtom) -> MalResult {
+        match (self, other) {
+            (MalAtom::Int(s), MalAtom::Int(o)) => Ok(MalAtom::Int(s - o)),
+            _ => Err("Expected two ints".into()),
+        }
+    }
+}
+
+pub fn mal_builtin_sub(args: Vec<&MalAtom>) -> MalResult {
+    if args.is_empty() {
+        Ok(MalAtom::Int(0))
+    } else {
+        args[1..]
+            .iter()
+            .fold(Ok(args[0].clone()), |acc, next| acc? - next)
     }
 }
