@@ -59,7 +59,7 @@ pub enum MalResultComp<'a> {
 impl<'a> ToTokens for MalResultComp<'a> {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         match self {
-            MalResultComp::Ok(mal_atom) => tokens.extend(quote!(Ok(#mal_atom)?)),
+            MalResultComp::Ok(mal_atom) => tokens.extend(quote!(#mal_atom)),
             MalResultComp::Err(mal_err) => tokens.extend(quote!(Err(#mal_err)?)),
         }
     }
@@ -172,12 +172,12 @@ fn lower_sexp(sexp: &[MalAtomComp], env: &HashMap<&str, MalFuncCallTemplate>) ->
             Some(func) => lower_mal_func_call_template(func, &sexp[1..], env),
             None => {
                 let err = MalResultComp::Err(format!("Function '{}' not defined", s));
-                quote!(#err?)
+                quote!(#err)
             }
         }
     } else {
         let err = MalResultComp::Err("Expected a function".into());
-        quote!(#err?)
+        quote!(#err)
     }
 }
 
