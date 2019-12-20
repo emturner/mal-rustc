@@ -101,5 +101,3 @@ impl<'a> ToTokens for MalFuncCall<'a> {
         }
     }
 }
-
-
