@@ -40,14 +40,15 @@ fn compile_mal(input: &str) -> Result<String, String> {
 
     if let Ok((_, ast)) = parse_result {
         let env = create_core_env();
-        let rust_tokens = lower(&ast, &env);
+        let rust_tokens = lower(&ast, &env, 0);
 
         let output = format!(
             "{}\r\n{}",
             MAL_RUNTIME,
             quote!(
                 fn mal_main() -> MalResult {
-                    Ok(#rust_tokens)
+                    #rust_tokens
+                    Ok(temp0)
                 }
                 fn main() {
                     match mal_main() {

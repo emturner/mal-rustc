@@ -65,8 +65,8 @@ impl<'a> ToTokens for MalResultComp<'a> {
     }
 }
 
-pub struct MalFuncCallTemplate<'a> {
-    pub name: &'a str,
+pub struct MalFuncCallTemplate {
+    pub name: String,
     pub num_args: MalArgCount,
 }
 
@@ -76,12 +76,12 @@ pub enum MalArgCount {
 }
 
 pub struct MalFuncCall<'a> {
-    template: &'a MalFuncCallTemplate<'a>,
+    template: &'a MalFuncCallTemplate,
     args: Vec<TokenStream>,
 }
 
 impl<'a> MalFuncCall<'a> {
-    pub fn new(func: &'a MalFuncCallTemplate<'a>, args: Vec<TokenStream>) -> MalFuncCall<'a> {
+    pub fn new(func: &'a MalFuncCallTemplate, args: Vec<TokenStream>) -> MalFuncCall<'a> {
         Self {
             template: func,
             args,
