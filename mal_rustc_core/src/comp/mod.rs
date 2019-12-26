@@ -11,28 +11,28 @@ pub mod env;
 pub fn create_core_env<'a>() -> Env<'a> {
     let mut env = Env::new(None);
     env.set(
-        "+",
+        "+".into(),
         MalAtomCompRef::Func(MalFuncCallTemplate {
             name: "mal_builtin_plus".into(),
             num_args: MalArgCount::Many,
         }),
     );
     env.set(
-        "-",
+        "-".into(),
         MalAtomCompRef::Func(MalFuncCallTemplate {
             name: "mal_builtin_sub".into(),
             num_args: MalArgCount::Many,
         }),
     );
     env.set(
-        "*",
+        "*".into(),
         MalAtomCompRef::Func(MalFuncCallTemplate {
             name: "mal_builtin_mul".into(),
             num_args: MalArgCount::Many,
         }),
     );
     env.set(
-        "/",
+        "/".into(),
         MalAtomCompRef::Func(MalFuncCallTemplate {
             name: "mal_builtin_div".into(),
             num_args: MalArgCount::Many,
@@ -42,13 +42,24 @@ pub fn create_core_env<'a>() -> Env<'a> {
 }
 
 #[allow(clippy::implicit_hasher)]
-pub fn lower(ast: &MalAtomComp, env: &Env, assign_to: u32) -> TokenStream {
+pub fn lower(ast: &MalAtomComp, env: &mut Env, assign_to: u32) -> TokenStream {
+    let temp = format_ident!("temp{}", assign_to);
     match ast {
         MalAtomComp::SExp(ref s) if !s.is_empty() => lower_sexp(s, env, assign_to),
         MalAtomComp::Vector(ref v) => lower_vector(v, env, assign_to),
         MalAtomComp::HashMap(ref h) => lower_hashmap(h, env, assign_to),
+        MalAtomComp::Symbol(ref s) => {
+            if let Some(MalAtomCompRef::Var(name)) = env.find(s) {
+                let name = format_ident!("{}", name);
+                // symbol vals are references of temporaries, so this won't cause a move
+                quote!(let #temp = #name;)
+            } else {
+                let err = MalResultComp::Err(format!("Exception: symbol '{}' not found", s));
+                quote!(let #temp: MalAtom = #err;)
+            }
+        }
         ast => {
-            let assign_to = format_ident!("temp{}", assign_to);
+            let assign_to = temp;
             quote!(let #assign_to = #ast;)
         }
     }
@@ -56,7 +67,7 @@ pub fn lower(ast: &MalAtomComp, env: &Env, assign_to: u32) -> TokenStream {
 
 fn lower_hashmap<'a>(
     h: &HashMap<String, MalAtomComp<'a>>,
-    env: &Env,
+    env: &mut Env,
     assign_to: u32,
 ) -> TokenStream {
     let (keys_temps, elems) = h
@@ -82,7 +93,7 @@ fn lower_hashmap<'a>(
     )
 }
 
-fn lower_vector(v: &[MalAtomComp], env: &Env, assign_to: u32) -> TokenStream {
+fn lower_vector(v: &[MalAtomComp], env: &mut Env, assign_to: u32) -> TokenStream {
     let (elems, temps) = v
         .iter()
         .zip(assign_to..)
@@ -99,27 +110,55 @@ fn lower_vector(v: &[MalAtomComp], env: &Env, assign_to: u32) -> TokenStream {
     )
 }
 
-fn lower_sexp(sexp: &[MalAtomComp], env: &Env, assign_to: u32) -> TokenStream {
-    if let MalAtomComp::Symbol(s) = sexp[0] {
-        match env.find(s) {
-            Some(MalAtomCompRef::Func(func)) => {
-                lower_mal_func_call_template(func, &sexp[1..], env, assign_to)
-            }
-            _ => {
+fn lower_sexp(sexp: &[MalAtomComp], env: &mut Env, assign_to: u32) -> TokenStream {
+    let temp = format_ident!("temp{}", assign_to);
+    match sexp[0] {
+        MalAtomComp::Symbol("def!") => lower_def(&sexp[1..], env, assign_to),
+        MalAtomComp::Symbol(s) => {
+            if let Some(MalAtomCompRef::Func(func)) = env.find(s) {
+                lower_mal_func_call_template(&func, &sexp[1..], env, assign_to)
+            } else {
                 let err = MalResultComp::Err(format!("Function '{}' not defined", s));
-                quote!(#err)
+                quote!(let #temp: MalAtom = #err;)
             }
         }
-    } else {
-        let err = MalResultComp::Err("Expected a function".to_string());
-        quote!(#err)
+        _ => {
+            let err = MalResultComp::Err("Expected a function".to_string());
+            quote!(let #temp: MalAtom = #err;)
+        }
     }
+}
+
+fn lower_def(args: &[MalAtomComp], env: &mut Env, assign_to: u32) -> TokenStream {
+    let temp = format_ident!("temp{}", assign_to);
+    if args.len() < 2 {
+        let err = MalResultComp::Err("Exception: 'def!' requires two arguments".to_string());
+        quote!(#err)
+    } else if let MalAtomComp::Symbol(s) = args[0] {
+        let rust_var_name = get_rust_var_name(s);
+        env.set(s.into(), MalAtomCompRef::Var(rust_var_name.clone()));
+
+        let val = lower(&args[1], env, assign_to);
+        let var = format_ident!("{}", rust_var_name);
+
+        quote!(
+            #val
+            let #var = &#temp;
+        )
+    } else {
+        let err = MalResultComp::Err("Exception: expected symbol".to_string());
+        quote!(let #temp: MalAtom = #err;)
+    }
+}
+
+fn get_rust_var_name(mal_symbol: &str) -> String {
+    format!("_mal_{}", mal_symbol)
 }
 
 fn lower_mal_func_call_template(
     func: &MalFuncCallTemplate,
     args: &[MalAtomComp],
-    env: &Env,
+    env: &mut Env,
     assign_to: u32,
 ) -> TokenStream {
     let (args, arg_names) = args

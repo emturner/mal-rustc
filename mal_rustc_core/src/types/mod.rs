@@ -65,11 +65,13 @@ impl<'a> ToTokens for MalResultComp<'a> {
     }
 }
 
+#[derive(Clone)]
 pub struct MalFuncCallTemplate {
     pub name: String,
     pub num_args: MalArgCount,
 }
 
+#[derive(Copy, Clone)]
 pub enum MalArgCount {
     Many,
     Known(u32),

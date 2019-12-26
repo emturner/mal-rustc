@@ -39,8 +39,8 @@ fn compile_mal(input: &str) -> Result<String, String> {
     let parse_result = parser::parse_mal_atom(input);
 
     if let Ok((_, ast)) = parse_result {
-        let env = create_core_env();
-        let rust_tokens = lower(&ast, &env, 0);
+        let mut env = create_core_env();
+        let rust_tokens = lower(&ast, &mut env, 0);
 
         let output = format!(
             "{}\r\n{}",

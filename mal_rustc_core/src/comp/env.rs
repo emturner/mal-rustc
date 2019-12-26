@@ -2,6 +2,7 @@ use super::*;
 
 use std::collections::HashMap;
 
+#[derive(Clone)]
 pub enum MalAtomCompRef {
     Var(String),
     Func(MalFuncCallTemplate),
@@ -9,7 +10,7 @@ pub enum MalAtomCompRef {
 
 pub struct Env<'a> {
     outer: Option<&'a Env<'a>>,
-    current: HashMap<&'a str, MalAtomCompRef>,
+    current: HashMap<String, MalAtomCompRef>,
 }
 
 impl<'a> Env<'a> {
@@ -20,16 +21,16 @@ impl<'a> Env<'a> {
         }
     }
 
-    pub fn set(&mut self, name: &'a str, val: MalAtomCompRef) {
+    pub fn set(&mut self, name: String, val: MalAtomCompRef) {
         self.current.insert(name, val);
     }
 
-    pub fn find(&self, name: &'a str) -> Option<&MalAtomCompRef> {
+    pub fn find(&self, name: &'a str) -> Option<MalAtomCompRef> {
         let v = self.current.get(name);
         if let (None, Some(outer)) = (v, self.outer) {
             outer.find(name)
         } else {
-            v
+            v.cloned()
         }
     }
 }

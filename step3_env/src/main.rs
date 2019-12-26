@@ -7,14 +7,21 @@ extern crate quote;
 use quote::quote;
 
 extern crate proc_macro2;
+use proc_macro2::TokenStream;
 
 extern crate nom;
 use nom::{error::*, Err};
 
 extern crate mal_rustc_core;
-use mal_rustc_core::{comp::*, parser, MAL_RUNTIME};
+use mal_rustc_core::{
+    comp::{env::Env, *},
+    parser, MAL_RUNTIME,
+};
 
 fn main() {
+    let mut tokens = TokenStream::new();
+    let mut env = create_core_env();
+
     loop {
         print!("user> ");
         io::stdout().flush().unwrap();
@@ -24,7 +31,7 @@ fn main() {
             Ok(0) => break,
             Ok(_) => {
                 if !input.chars().all(|c| c.is_whitespace()) {
-                    rep(&input)
+                    rep(&input, &mut env, &mut tokens)
                 }
             }
             Err(e) => {
@@ -35,20 +42,24 @@ fn main() {
     }
 }
 
-fn compile_mal(input: &str) -> Result<String, String> {
+fn compile_mal(input: &str, env: &mut Env, tokens: &mut TokenStream) -> Result<String, String> {
     let parse_result = parser::parse_mal_atom(input);
 
     if let Ok((_, ast)) = parse_result {
-        let env = create_core_env();
-        let rust_tokens = lower(&ast, &env, 0);
+        let rust_tokens = lower(&ast, env, 0);
+
+        tokens.extend(rust_tokens);
+        tokens.extend(quote!(let _result: MalResult = Ok(temp0.clone());));
 
         let output = format!(
-            "{}\r\n{}",
+            "#![allow(non_snake_case)]
+            {}
+            {}",
             MAL_RUNTIME,
             quote!(
                 fn mal_main() -> MalResult {
-                    #rust_tokens
-                    Ok(temp0)
+                    #tokens
+                    _result
                 }
                 fn main() {
                     match mal_main() {
@@ -78,8 +89,8 @@ fn compile_mal(input: &str) -> Result<String, String> {
     }
 }
 
-fn rep(input: &str) {
-    match compile_mal(input) {
+fn rep(input: &str, env: &mut Env, tokens: &mut TokenStream) {
+    match compile_mal(input, env, tokens) {
         Ok(rust) => {
             if let Err(e) = fs::write(Path::new("mal-gen.rs"), rust) {
                 println!("{}", e);
@@ -87,7 +98,6 @@ fn rep(input: &str) {
                 if !result.stderr.is_empty() {
                     println!("{}", String::from_utf8_lossy(&result.stderr));
                 } else if let Ok(result) = Command::new("./mal-gen").output() {
-                    // just print as user input ends in <enter>
                     println!("{}", String::from_utf8_lossy(&result.stdout));
                 }
             }
