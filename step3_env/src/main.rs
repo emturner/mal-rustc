@@ -19,7 +19,7 @@ use mal_rustc_core::{
 };
 
 fn main() {
-    let mut tokens = TokenStream::new();
+    let mut tokens = vec![];
     let mut env = create_core_env();
 
     loop {
@@ -42,14 +42,25 @@ fn main() {
     }
 }
 
-fn compile_mal(input: &str, env: &mut Env, tokens: &mut TokenStream) -> Result<String, String> {
+fn compile_mal(
+    input: &str,
+    env: &mut Env,
+    saved_tokens: &mut Vec<TokenStream>,
+) -> Result<String, String> {
     let parse_result = parser::parse_mal_atom(input);
 
     if let Ok((_, ast)) = parse_result {
         let rust_tokens = lower(&ast, env, 0);
+        saved_tokens.insert(saved_tokens.len(), rust_tokens);
+        let result_tokens = quote!(let _result: MalResult = Ok(temp0.clone()););
 
-        tokens.extend(rust_tokens);
-        tokens.extend(quote!(let _result: MalResult = Ok(temp0.clone());));
+        let tokens = quote!(
+            #(#saved_tokens
+              *counter += 1;
+            )*
+            #result_tokens
+        );
+        saved_tokens.insert(saved_tokens.len(), result_tokens);
 
         let output = format!(
             "#![allow(non_snake_case)]
@@ -57,14 +68,18 @@ fn compile_mal(input: &str, env: &mut Env, tokens: &mut TokenStream) -> Result<S
             {}",
             MAL_RUNTIME,
             quote!(
-                fn mal_main() -> MalResult {
+                fn mal_main(counter: &mut i32) -> MalResult {
                     #tokens
                     _result
                 }
                 fn main() {
-                    match mal_main() {
+                    let mut counter = 1;
+                    match mal_main(&mut counter) {
                         Ok(ok) => println!("{}", ok),
-                        Err(err) => println!("{}", err),
+                        Err(err) => {
+                            println!("{}", err);
+                            std::process::exit(counter);
+                        },
                     }
                 }
             )
@@ -89,7 +104,7 @@ fn compile_mal(input: &str, env: &mut Env, tokens: &mut TokenStream) -> Result<S
     }
 }
 
-fn rep(input: &str, env: &mut Env, tokens: &mut TokenStream) {
+fn rep(input: &str, env: &mut Env, tokens: &mut Vec<TokenStream>) {
     match compile_mal(input, env, tokens) {
         Ok(rust) => {
             if let Err(e) = fs::write(Path::new("mal-gen.rs"), rust) {
@@ -98,6 +113,12 @@ fn rep(input: &str, env: &mut Env, tokens: &mut TokenStream) {
                 if !result.stderr.is_empty() {
                     println!("{}", String::from_utf8_lossy(&result.stderr));
                 } else if let Ok(result) = Command::new("./mal-gen").output() {
+                    if let Some(code) = result.status.code() {
+                        if code > 0 {
+                            // counter starts at 1
+                            tokens.truncate(code as usize - 1);
+                        }
+                    }
                     println!("{}", String::from_utf8_lossy(&result.stdout));
                 }
             }

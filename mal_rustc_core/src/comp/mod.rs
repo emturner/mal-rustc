@@ -118,7 +118,7 @@ fn lower_sexp(sexp: &[MalAtomComp], env: &mut Env, assign_to: u32) -> TokenStrea
             if let Some(MalAtomCompRef::Func(func)) = env.find(s) {
                 lower_mal_func_call_template(&func, &sexp[1..], env, assign_to)
             } else {
-                let err = MalResultComp::Err(format!("Function '{}' not defined", s));
+                let err = MalResultComp::Err(format!("Exception: function '{}' not found.", s));
                 quote!(let #temp: MalAtom = #err;)
             }
         }
