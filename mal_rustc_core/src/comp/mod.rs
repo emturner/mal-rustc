@@ -55,7 +55,7 @@ pub fn lower(ast: &MalAtomComp, env: &mut Env, assign_to: u32) -> TokenStream {
                 quote!(let #temp = #name;)
             } else {
                 let err = MalResultComp::Err(format!("Exception: symbol '{}' not found", s));
-                quote!(let #temp: &MalAtom = #err;)
+                lower_mal_result_temp_assignment(err, assign_to)
             }
         }
         ast => {
@@ -111,7 +111,6 @@ fn lower_vector(v: &[MalAtomComp], env: &mut Env, assign_to: u32) -> TokenStream
 }
 
 fn lower_sexp(sexp: &[MalAtomComp], env: &mut Env, assign_to: u32) -> TokenStream {
-    let temp = format_ident!("temp{}", assign_to);
     match sexp[0] {
         MalAtomComp::Symbol("def!") => lower_def(&sexp[1..], env, assign_to),
         MalAtomComp::Symbol(s) => {
@@ -119,12 +118,12 @@ fn lower_sexp(sexp: &[MalAtomComp], env: &mut Env, assign_to: u32) -> TokenStrea
                 lower_mal_func_call_template(&func, &sexp[1..], env, assign_to)
             } else {
                 let err = MalResultComp::Err(format!("Exception: function '{}' not found.", s));
-                quote!(let #temp: &MalAtom = #err;)
+                lower_mal_result_temp_assignment(err, assign_to)
             }
         }
         _ => {
             let err = MalResultComp::Err("Expected a function".to_string());
-            quote!(let #temp: &MalAtom = #err;)
+            lower_mal_result_temp_assignment(err, assign_to)
         }
     }
 }
@@ -133,7 +132,7 @@ fn lower_def(args: &[MalAtomComp], env: &mut Env, assign_to: u32) -> TokenStream
     let temp = format_ident!("temp{}", assign_to);
     if args.len() < 2 {
         let err = MalResultComp::Err("Exception: 'def!' requires two arguments".to_string());
-        quote!(let #temp: &MalAtom = #err;)
+        lower_mal_result_temp_assignment(err, assign_to)
     } else if let MalAtomComp::Symbol(s) = args[0] {
         let rust_var_name = get_rust_var_name(s);
         env.set(s.into(), MalAtomCompRef::Var(rust_var_name.clone()));
@@ -147,7 +146,7 @@ fn lower_def(args: &[MalAtomComp], env: &mut Env, assign_to: u32) -> TokenStream
         )
     } else {
         let err = MalResultComp::Err("Exception: expected symbol".to_string());
-        quote!(let #temp: &MalAtom = #err;)
+        lower_mal_result_temp_assignment(err, assign_to)
     }
 }
 
@@ -174,4 +173,9 @@ fn lower_mal_func_call_template(
 
     let assign_to = format_ident!("temp{}", assign_to);
     quote!(#(#args)* let #assign_to = #call;)
+}
+
+fn lower_mal_result_temp_assignment(result: MalResultComp, assign_to: u32) -> TokenStream {
+    let temp = format_ident!("temp{}", assign_to);
+    quote!(let #temp: &MalAtom = &#result;)
 }

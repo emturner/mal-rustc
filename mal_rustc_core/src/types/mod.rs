@@ -59,8 +59,8 @@ pub enum MalResultComp<'a> {
 impl<'a> ToTokens for MalResultComp<'a> {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         match self {
-            MalResultComp::Ok(mal_atom) => tokens.extend(quote!(&#mal_atom)),
-            MalResultComp::Err(mal_err) => tokens.extend(quote!(&Err(#mal_err)?)),
+            MalResultComp::Ok(mal_atom) => tokens.extend(quote!(#mal_atom)),
+            MalResultComp::Err(mal_err) => tokens.extend(quote!(Err(#mal_err)?)),
         }
     }
 }
