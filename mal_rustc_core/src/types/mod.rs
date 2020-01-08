@@ -59,8 +59,8 @@ pub enum MalResultComp<'a> {
 impl<'a> ToTokens for MalResultComp<'a> {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         match self {
-            MalResultComp::Ok(mal_atom) => tokens.extend(quote!(#mal_atom)),
-            MalResultComp::Err(mal_err) => tokens.extend(quote!(Err(#mal_err)?)),
+            MalResultComp::Ok(mal_atom) => tokens.extend(quote!(&#mal_atom)),
+            MalResultComp::Err(mal_err) => tokens.extend(quote!(&Err(#mal_err)?)),
         }
     }
 }
@@ -97,7 +97,7 @@ impl<'a> ToTokens for MalFuncCall<'a> {
             MalArgCount::Many => {
                 let name = format_ident!("{}", self.template.name);
                 let args = &self.args;
-                tokens.extend(quote!(#name(vec![#(&#args),*])?))
+                tokens.extend(quote!(&#name(vec![#(#args),*])?))
             }
             _ => unimplemented!(),
         }

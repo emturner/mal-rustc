@@ -55,12 +55,12 @@ pub fn lower(ast: &MalAtomComp, env: &mut Env, assign_to: u32) -> TokenStream {
                 quote!(let #temp = #name;)
             } else {
                 let err = MalResultComp::Err(format!("Exception: symbol '{}' not found", s));
-                quote!(let #temp: MalAtom = #err;)
+                quote!(let #temp: &MalAtom = #err;)
             }
         }
         ast => {
             let assign_to = temp;
-            quote!(let #assign_to = #ast;)
+            quote!(let #assign_to = &#ast;)
         }
     }
 }
@@ -89,7 +89,7 @@ fn lower_hashmap<'a>(
     let temp = format_ident!("temp{}", assign_to);
     quote!(
         #(#elems)*
-        let #temp = MalAtom::HashMap({#hm_tokens});
+        let #temp = &MalAtom::HashMap({#hm_tokens});
     )
 }
 
@@ -106,7 +106,7 @@ fn lower_vector(v: &[MalAtomComp], env: &mut Env, assign_to: u32) -> TokenStream
     let temp = format_ident!("temp{}", assign_to);
     quote!(
         #(#elems)*
-        let #temp = MalAtom::Vector(vec![#(#temps),*]);
+        let #temp = &MalAtom::Vector(vec![#(#temps),*]);
     )
 }
 
@@ -119,12 +119,12 @@ fn lower_sexp(sexp: &[MalAtomComp], env: &mut Env, assign_to: u32) -> TokenStrea
                 lower_mal_func_call_template(&func, &sexp[1..], env, assign_to)
             } else {
                 let err = MalResultComp::Err(format!("Exception: function '{}' not found.", s));
-                quote!(let #temp: MalAtom = #err;)
+                quote!(let #temp: &MalAtom = #err;)
             }
         }
         _ => {
             let err = MalResultComp::Err("Expected a function".to_string());
-            quote!(let #temp: MalAtom = #err;)
+            quote!(let #temp: &MalAtom = #err;)
         }
     }
 }
@@ -133,7 +133,7 @@ fn lower_def(args: &[MalAtomComp], env: &mut Env, assign_to: u32) -> TokenStream
     let temp = format_ident!("temp{}", assign_to);
     if args.len() < 2 {
         let err = MalResultComp::Err("Exception: 'def!' requires two arguments".to_string());
-        quote!(#err)
+        quote!(let #temp: &MalAtom = #err;)
     } else if let MalAtomComp::Symbol(s) = args[0] {
         let rust_var_name = get_rust_var_name(s);
         env.set(s.into(), MalAtomCompRef::Var(rust_var_name.clone()));
@@ -143,11 +143,11 @@ fn lower_def(args: &[MalAtomComp], env: &mut Env, assign_to: u32) -> TokenStream
 
         quote!(
             #val
-            let #var = &#temp;
+            let #var = #temp;
         )
     } else {
         let err = MalResultComp::Err("Exception: expected symbol".to_string());
-        quote!(let #temp: MalAtom = #err;)
+        quote!(let #temp: &MalAtom = #err;)
     }
 }
 
