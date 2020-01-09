@@ -113,6 +113,7 @@ fn lower_vector(v: &[MalAtomComp], env: &mut Env, assign_to: u32) -> TokenStream
 fn lower_sexp(sexp: &[MalAtomComp], env: &mut Env, assign_to: u32) -> TokenStream {
     match sexp[0] {
         MalAtomComp::Symbol("def!") => lower_def(&sexp[1..], env, assign_to),
+        MalAtomComp::Symbol("let*") => lower_let(&sexp[1..], env, assign_to),
         MalAtomComp::Symbol(s) => {
             if let Some(MalAtomCompRef::Func(func)) = env.find(s) {
                 lower_mal_func_call_template(&func, &sexp[1..], env, assign_to)
@@ -146,6 +147,22 @@ fn lower_def(args: &[MalAtomComp], env: &mut Env, assign_to: u32) -> TokenStream
         )
     } else {
         let err = MalResultComp::Err("Exception: expected symbol".to_string());
+        lower_mal_result_temp_assignment(err, assign_to)
+    }
+}
+
+fn lower_let(args: &[MalAtomComp], env: &mut Env, assign_to: u32) -> TokenStream {
+    if args.len() < 2 {
+        let err = MalResultComp::Err("Exception: 'let*' requires two arguments".to_string());
+        lower_mal_result_temp_assignment(err, assign_to)
+    } else if let MalAtomComp::SExp(v) | MalAtomComp::Vector(v) = &args[0] {
+       // TODO: make new inner Env with env as outer
+       //       lower symbol/value pairs to let bindings in inner [using lower_def?]
+       //       lower third arg (ast) 
+       //       wrap in new block and return third arg
+        quote!()
+    } else {
+        let err = MalResultComp::Err("Exception: expected s-exp or vector".to_string());
         lower_mal_result_temp_assignment(err, assign_to)
     }
 }
