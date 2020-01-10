@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::fmt::{self, Display};
+use std::rc::Rc;
 
 pub type MalResult = Result<MalAtom, String>;
 
@@ -7,16 +8,16 @@ pub type MalResult = Result<MalAtom, String>;
 pub enum MalAtom {
     Nil,
     Bool(bool),
-    Special(String),
+    Special(Rc<String>),
     // ideally this would be &'a str, but we need to escape the control characters
     // so need to allocate a new string
-    String(String),
+    String(Rc<String>),
     Int(i64),
-    Symbol(String),
-    SExp(Vec<MalAtom>),
-    Vector(Vec<MalAtom>),
-    Keyword(String),
-    HashMap(HashMap<String, MalAtom>),
+    Symbol(Rc<String>),
+    SExp(Rc<Vec<MalAtom>>),
+    Vector(Rc<Vec<MalAtom>>),
+    Keyword(Rc<String>),
+    HashMap(Rc<HashMap<String, MalAtom>>),
 }
 
 impl<'a> Display for MalAtom {
@@ -63,9 +64,9 @@ impl<'a> Display for MalAtom {
                         format!(
                             "{} {}",
                             if k.starts_with(':') {
-                                MalAtom::Keyword(k.to_string())
+                                MalAtom::Keyword(Rc::new(k.to_string()))
                             } else {
-                                MalAtom::String(k.into())
+                                MalAtom::String(Rc::new(k.to_string()))
                             },
                             v
                         )
