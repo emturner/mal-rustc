@@ -160,20 +160,20 @@ fn lower_let(args: &[MalAtomComp], env: &mut Env, assign_to: u32) -> TokenStream
         let err = MalResultComp::Err("Exception: 'let*' requires two arguments".to_string());
         lower_mal_result_temp_assignment(err, assign_to)
     } else if let MalAtomComp::SExp(v) | MalAtomComp::Vector(v) = &args[0] {
-        // TODO:
         //      make new inner Env with env as outer
         let mut inner_env = Env::new(Some(env));
+
         //      lower symbol/value pairs to let bindings in inner [using lower_def?]
         let bindings = (0..v.len())
             .step_by(2)
             .map(|i| lower_def(&v[i..], &mut inner_env, 0))
             .collect::<Vec<_>>();
+
         //      lower third arg (ast)
         let body = lower(&args[1], &mut inner_env, 0);
+
         //      wrap in new block and return third arg
-
         let temp = format_ident!("temp{}", assign_to);
-
         quote!(
             let #temp = &{
                 #(#bindings)*
