@@ -175,11 +175,12 @@ fn lower_let(args: &[MalAtomComp], env: &mut Env, assign_to: u32) -> TokenStream
         //      wrap in new block and return third arg
         let temp = format_ident!("temp{}", assign_to);
         quote!(
-            let #temp = &{
+            let #temp = &{|| -> MalResult {
                 #(#bindings)*
                 #body
-                temp0.clone()
-            };
+                Ok(temp0.clone())
+            }}()?;
+            //let #temp: &MalAtom = &#temp()?;
         )
     } else {
         let err = MalResultComp::Err("Exception: expected s-exp or vector".to_string());
