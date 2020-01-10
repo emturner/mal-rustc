@@ -25,14 +25,14 @@ impl<'a> ToTokens for MalAtomComp<'a> {
             MalAtomComp::Nil => quote!(MalAtom::Nil),
             MalAtomComp::Bool(b) => quote!(MalAtom::Bool(#b)),
             MalAtomComp::Special(s) => quote!(MalAtom::Special(#s.to_string())),
-            MalAtomComp::String(s) => quote!(MalAtom::String(#s.into())),
+            MalAtomComp::String(s) => quote!(MalAtom::String(Rc::new(#s.to_string()))),
             MalAtomComp::Int(i) => quote!(MalAtom::Int(#i)),
-            MalAtomComp::Symbol(s) => quote!(MalAtom::Symbol(#s.into())),
-            MalAtomComp::SExp(sexp) => quote!(MalAtom::SExp(vec![#(#sexp),*])),
-            MalAtomComp::Vector(v) => quote!(MalAtom::Vector(vec![#(#v),*])),
-            MalAtomComp::Keyword(k) => quote!(MalAtom::Keyword(#k.to_string())),
+            MalAtomComp::Symbol(s) => quote!(MalAtom::Symbol(Rc::new(#s.to_string()))),
+            MalAtomComp::SExp(sexp) => quote!(MalAtom::SExp(Rc::new(vec![#(#sexp),*]))),
+            MalAtomComp::Vector(v) => quote!(MalAtom::Vector(Rc::new(vec![#(#v.clone()),*]))),
+            MalAtomComp::Keyword(k) => quote!(MalAtom::Keyword(Rc::new(#k.to_string()))),
             MalAtomComp::HashMap(h) if h.is_empty() => {
-                (quote!(MalAtom::HashMap(std::collections::HashMap::new())))
+                (quote!(MalAtom::HashMap(Rc::new(std::collections::HashMap::new()))))
             }
             MalAtomComp::HashMap(h) => {
                 let mut hm_tokens = quote!(let mut hm = std::collections::HashMap::new(););
@@ -43,7 +43,7 @@ impl<'a> ToTokens for MalAtomComp<'a> {
 
                 hm_tokens.extend(quote!(hm));
 
-                quote!(MalAtom::HashMap({#hm_tokens}))
+                quote!(MalAtom::HashMap(Rc::new({#hm_tokens})))
             }
         };
 

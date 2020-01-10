@@ -48,7 +48,7 @@ fn compile_mal(input: &str) -> Result<String, String> {
             quote!(
                 fn mal_main() -> MalResult {
                     #rust_tokens
-                    Ok(temp0)
+                    Ok(temp0.clone())
                 }
                 fn main() {
                     match mal_main() {

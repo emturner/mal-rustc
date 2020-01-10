@@ -78,10 +78,14 @@ fn lower_hashmap<'a>(
             ((key, temp), lower(elem, env, assign_to))
         })
         .unzip::<_, _, Vec<_>, Vec<_>>();
-    let mut hm_tokens = quote!(let mut hm = std::collections::HashMap::new(););
+    let mut hm_tokens = if keys_temps.is_empty() {
+        quote!(let hm = std::collections::HashMap::new();)
+    } else {
+        quote!(let mut hm = std::collections::HashMap::new();)
+    };
 
     for (k, t) in keys_temps.iter() {
-        hm_tokens.extend(quote!(hm.insert(#k.into(), #t);));
+        hm_tokens.extend(quote!(hm.insert(#k.to_string(), #t.clone());));
     }
 
     hm_tokens.extend(quote!(hm));
@@ -89,7 +93,7 @@ fn lower_hashmap<'a>(
     let temp = format_ident!("temp{}", assign_to);
     quote!(
         #(#elems)*
-        let #temp = &MalAtom::HashMap({#hm_tokens});
+        let #temp = &MalAtom::HashMap(Rc::new({#hm_tokens}));
     )
 }
 
@@ -106,7 +110,7 @@ fn lower_vector(v: &[MalAtomComp], env: &mut Env, assign_to: u32) -> TokenStream
     let temp = format_ident!("temp{}", assign_to);
     quote!(
         #(#elems)*
-        let #temp = &MalAtom::Vector(vec![#(#temps),*]);
+        let #temp = &MalAtom::Vector(Rc::new(vec![#(#temps.clone()),*]));
     )
 }
 
@@ -156,10 +160,10 @@ fn lower_let(args: &[MalAtomComp], env: &mut Env, assign_to: u32) -> TokenStream
         let err = MalResultComp::Err("Exception: 'let*' requires two arguments".to_string());
         lower_mal_result_temp_assignment(err, assign_to)
     } else if let MalAtomComp::SExp(v) | MalAtomComp::Vector(v) = &args[0] {
-       // TODO: make new inner Env with env as outer
-       //       lower symbol/value pairs to let bindings in inner [using lower_def?]
-       //       lower third arg (ast) 
-       //       wrap in new block and return third arg
+        // TODO: make new inner Env with env as outer
+        //       lower symbol/value pairs to let bindings in inner [using lower_def?]
+        //       lower third arg (ast)
+        //       wrap in new block and return third arg
         quote!()
     } else {
         let err = MalResultComp::Err("Exception: expected s-exp or vector".to_string());
