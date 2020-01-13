@@ -1,10 +1,10 @@
 use std::collections::HashMap;
-use std::fmt::{self, Display};
+use std::fmt;
 use std::rc::Rc;
 
 pub type MalResult = Result<MalAtom, String>;
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Clone)]
 pub enum MalAtom {
     Nil,
     Bool(bool),
@@ -16,10 +16,17 @@ pub enum MalAtom {
     Vector(Rc<Vec<MalAtom>>),
     Keyword(Rc<String>),
     HashMap(Rc<HashMap<String, MalAtom>>),
+    Func(Rc<fn(&[&MalAtom]) -> MalResult>)
 }
 
-impl<'a> Display for MalAtom {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+impl fmt::Debug for MalAtom {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        (self as &dyn fmt::Display).fmt(f)
+    }
+}
+
+impl fmt::Display for MalAtom {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             MalAtom::Nil => write!(f, "nil"),
             MalAtom::Bool(b) => b.fmt(f),
@@ -73,7 +80,8 @@ impl<'a> Display for MalAtom {
                     .join(" ");
                 exps.fmt(f)?;
                 write!(f, "}}")
-            }
+            },
+            MalAtom::Func(_) => write!(f, "#<function>"),
         }
     }
 }

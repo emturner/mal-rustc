@@ -17,7 +17,7 @@ pub enum MalAtomComp<'a> {
     SExp(Vec<MalAtomComp<'a>>),
     Vector(Vec<MalAtomComp<'a>>),
     Keyword(&'a str),
-    HashMap(HashMap<String, MalAtomComp<'a>>),
+    HashMap(HashMap<String, MalAtomComp<'a>>)
 }
 impl<'a> ToTokens for MalAtomComp<'a> {
     fn to_tokens(&self, tokens: &mut TokenStream) {
