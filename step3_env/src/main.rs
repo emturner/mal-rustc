@@ -52,7 +52,9 @@ fn compile_mal(
     if let Ok((_, ast)) = parse_result {
         let rust_tokens = lower(&ast, env, 0);
         saved_tokens.insert(saved_tokens.len(), rust_tokens);
-        let result_tokens = quote!(let _result: MalResult = Ok(temp0.clone()););
+
+        let temp0 = get_ident(0);
+        let result_tokens = quote!(let _result: MalResult = Ok(#temp0.clone()););
 
         let tokens = quote!(
             #(#saved_tokens

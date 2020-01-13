@@ -1,9 +1,8 @@
 use crate::types::*;
 use env::Env;
 use env::MalAtomCompRef;
-use proc_macro2::TokenStream;
-use quote::format_ident;
-use quote::quote;
+use proc_macro2::{Ident, TokenStream};
+use quote::{format_ident, quote};
 use std::collections::HashMap;
 
 pub mod env;
@@ -42,7 +41,7 @@ pub fn create_core_env<'a>() -> Env<'a> {
 }
 
 pub fn lower(ast: &MalAtomComp, env: &mut Env, assign_to: u32) -> TokenStream {
-    let temp = format_ident!("temp{}", assign_to);
+    let temp = get_ident(assign_to);
     match ast {
         MalAtomComp::SExp(ref s) if !s.is_empty() => lower_sexp(s, env, assign_to),
         MalAtomComp::Vector(ref v) => lower_vector(v, env, assign_to),
@@ -73,7 +72,7 @@ fn lower_hashmap<'a>(
         .iter()
         .zip(assign_to..)
         .map(|((key, elem), assign_to)| {
-            let temp = format_ident!("temp{}", assign_to);
+            let temp = get_ident(assign_to);
             ((key, temp), lower(elem, env, assign_to))
         })
         .unzip::<_, _, Vec<_>, Vec<_>>();
@@ -89,7 +88,7 @@ fn lower_hashmap<'a>(
 
     hm_tokens.extend(quote!(hm));
 
-    let temp = format_ident!("temp{}", assign_to);
+    let temp = get_ident(assign_to);
     quote!(
         #(#elems)*
         let #temp = &MalAtom::HashMap(Rc::new({#hm_tokens}));
@@ -101,12 +100,12 @@ fn lower_vector(v: &[MalAtomComp], env: &mut Env, assign_to: u32) -> TokenStream
         .iter()
         .zip(assign_to..)
         .map(|(elem, assign_to)| {
-            let temp = format_ident!("temp{}", assign_to);
+            let temp = get_ident(assign_to);
             (lower(elem, env, assign_to), temp)
         })
         .unzip::<_, _, Vec<_>, Vec<_>>();
 
-    let temp = format_ident!("temp{}", assign_to);
+    let temp = get_ident(assign_to);
     quote!(
         #(#elems)*
         let #temp = &MalAtom::Vector(Rc::new(vec![#(#temps.clone()),*]));
@@ -117,6 +116,7 @@ fn lower_sexp(sexp: &[MalAtomComp], env: &mut Env, assign_to: u32) -> TokenStrea
     match sexp[0] {
         MalAtomComp::Symbol("def!") => lower_def(&sexp[1..], env, assign_to),
         MalAtomComp::Symbol("let*") => lower_let(&sexp[1..], env, assign_to),
+        MalAtomComp::Symbol("do") => lower_do(&sexp[1..], env, assign_to),
         MalAtomComp::Symbol(s) => {
             if let Some(MalAtomCompRef::Func(func)) = env.find(s) {
                 lower_mal_func_call_template(&func, &sexp[1..], env, assign_to)
@@ -133,7 +133,7 @@ fn lower_sexp(sexp: &[MalAtomComp], env: &mut Env, assign_to: u32) -> TokenStrea
 }
 
 fn lower_def(args: &[MalAtomComp], env: &mut Env, assign_to: u32) -> TokenStream {
-    let temp = format_ident!("temp{}", assign_to);
+    let temp = get_ident(assign_to);
     if args.len() < 2 {
         let err = MalResultComp::Err("Exception: 'def!' requires two arguments".to_string());
         lower_mal_result_temp_assignment(err, assign_to)
@@ -172,18 +172,29 @@ fn lower_let(args: &[MalAtomComp], env: &mut Env, assign_to: u32) -> TokenStream
         let body = lower(&args[1], &mut inner_env, 0);
 
         //      wrap in new block and return third arg
-        let temp = format_ident!("temp{}", assign_to);
+        let temp = get_ident(assign_to);
+        let temp0 = get_ident(0);
         quote!(
             let #temp = &{|| -> MalResult {
                 #(#bindings)*
                 #body
-                Ok(temp0.clone())
+                Ok(#temp0.clone())
             }}()?;
-            //let #temp: &MalAtom = &#temp()?;
         )
     } else {
         let err = MalResultComp::Err("Exception: expected s-exp or vector".to_string());
         lower_mal_result_temp_assignment(err, assign_to)
+    }
+}
+
+fn lower_do(args: &[MalAtomComp], env: &mut Env, assign_to: u32) -> TokenStream {
+    if args.is_empty() {
+        let temp = get_ident(assign_to);
+        let err = MalResultComp::Err("Exception: 'do' requires at least one argument".to_string());
+        quote!(let #temp: &MalAtom = &#err;)
+    } else {
+        let lowered = args.iter().map(|a| lower(a, env, assign_to));
+        quote!(#(#lowered)*)
     }
 }
 
@@ -201,18 +212,20 @@ fn lower_mal_func_call_template(
         .iter()
         .zip(assign_to..)
         .map(|(atom, u)| {
-            let assign_to = format_ident!("temp{}", u);
+            let assign_to = get_ident(u);
             (lower(atom, env, u), quote!(#assign_to))
         })
         .unzip::<_, _, Vec<_>, _>();
 
     let call = MalFuncCall::new(func, arg_names);
 
-    let assign_to = format_ident!("temp{}", assign_to);
+    let assign_to = get_ident(assign_to);
     quote!(#(#args)* let #assign_to = #call;)
 }
 
 fn lower_mal_result_temp_assignment(result: MalResultComp, assign_to: u32) -> TokenStream {
-    let temp = format_ident!("temp{}", assign_to);
+    let temp = get_ident(assign_to);
     quote!(let #temp: &MalAtom = &#result;)
 }
+
+pub fn get_ident(assign_to: u32) -> Ident { format_ident!("_{}", assign_to) }
