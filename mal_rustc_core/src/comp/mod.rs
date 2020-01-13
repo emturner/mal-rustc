@@ -41,7 +41,6 @@ pub fn create_core_env<'a>() -> Env<'a> {
     env
 }
 
-#[allow(clippy::implicit_hasher)]
 pub fn lower(ast: &MalAtomComp, env: &mut Env, assign_to: u32) -> TokenStream {
     let temp = format_ident!("temp{}", assign_to);
     match ast {
