@@ -65,41 +65,21 @@ impl<'a> ToTokens for MalResultComp<'a> {
     }
 }
 
-#[derive(Clone)]
-pub struct MalFuncCallTemplate {
-    pub name: String,
-    pub num_args: MalArgCount,
-}
-
-#[derive(Copy, Clone)]
-pub enum MalArgCount {
-    Many,
-    Known(u32),
-}
-
 pub struct MalFuncCall<'a> {
-    template: &'a MalFuncCallTemplate,
+    name: &'a str,
     args: Vec<TokenStream>,
 }
 
 impl<'a> MalFuncCall<'a> {
-    pub fn new(func: &'a MalFuncCallTemplate, args: Vec<TokenStream>) -> MalFuncCall<'a> {
-        Self {
-            template: func,
-            args,
-        }
+    pub fn new(name: &'a str, args: Vec<TokenStream>) -> MalFuncCall<'a> {
+        Self { name, args }
     }
 }
 
 impl<'a> ToTokens for MalFuncCall<'a> {
     fn to_tokens(&self, tokens: &mut TokenStream) {
-        match self.template.num_args {
-            MalArgCount::Many => {
-                let name = format_ident!("{}", self.template.name);
-                let args = &self.args;
-                tokens.extend(quote!(&#name(&[#(#args),*])?))
-            }
-            _ => unimplemented!(),
-        }
+        let name = format_ident!("{}", self.name);
+        let args = &self.args;
+        tokens.extend(quote!(&#name(&[#(#args),*])?))
     }
 }

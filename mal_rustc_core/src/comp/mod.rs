@@ -9,40 +9,18 @@ pub mod env;
 
 pub fn create_core_env<'a>() -> Env<'a> {
     let mut env = Env::new(None);
-    env.set(
-        "+".into(),
-        MalAtomCompRef::Func(MalFuncCallTemplate {
-            name: "mal_builtin_plus".into(),
-            num_args: MalArgCount::Many,
-        }),
-    );
-    env.set(
-        "-".into(),
-        MalAtomCompRef::Func(MalFuncCallTemplate {
-            name: "mal_builtin_sub".into(),
-            num_args: MalArgCount::Many,
-        }),
-    );
-    env.set(
-        "*".into(),
-        MalAtomCompRef::Func(MalFuncCallTemplate {
-            name: "mal_builtin_mul".into(),
-            num_args: MalArgCount::Many,
-        }),
-    );
-    env.set(
-        "/".into(),
-        MalAtomCompRef::Func(MalFuncCallTemplate {
-            name: "mal_builtin_div".into(),
-            num_args: MalArgCount::Many,
-        }),
-    );
+    env.set("+".into(), MalAtomCompRef::Func("mal_builtin_plus".into()));
+    env.set("-".into(), MalAtomCompRef::Func("mal_builtin_sub".into()));
+    env.set("*".into(), MalAtomCompRef::Func("mal_builtin_mul".into()));
+    env.set("/".into(), MalAtomCompRef::Func("mal_builtin_div".into()));
+    // drain core assignments
+    env.get_new_vars();
     env
 }
 
 pub fn lower(ast: &MalAtomComp, env: &mut Env, assign_to: u32) -> TokenStream {
     let temp = get_ident(assign_to);
-    match ast {
+    let tokens = match ast {
         MalAtomComp::SExp(ref s) if !s.is_empty() => lower_sexp(s, env, assign_to),
         MalAtomComp::Vector(ref v) => lower_vector(v, env, assign_to),
         MalAtomComp::HashMap(ref h) => lower_hashmap(h, env, assign_to),
@@ -60,6 +38,34 @@ pub fn lower(ast: &MalAtomComp, env: &mut Env, assign_to: u32) -> TokenStream {
             let assign_to = temp;
             quote!(let #assign_to = &#ast;)
         }
+    };
+
+    if assign_to > 0 {
+        tokens
+    } else {
+        // top level - create all the assigned vars in uninitialized state
+        let assignments = env.get_new_vars();
+        let assignments = assignments
+            .iter()
+            .map(|(a, new)| {
+                let rust_name = match env.find(a) {
+                    Some(MalAtomCompRef::Var(name)) | Some(MalAtomCompRef::Func(name)) => name,
+                    _ => unreachable!(),
+                };
+                let rust_name = format_ident!("{}", rust_name);
+
+                if *new {
+                    quote!(let mut #rust_name = &MalAtom::Undefined;)
+                } else {
+                    quote!(let mut #rust_name = #rust_name;)
+                }
+            })
+            .collect::<Vec<_>>();
+
+        quote!(
+            #(#assignments)*
+            #tokens
+        )
     }
 }
 
@@ -146,7 +152,7 @@ fn lower_def(args: &[MalAtomComp], env: &mut Env, assign_to: u32) -> TokenStream
 
         quote!(
             #val
-            let #var = #temp;
+            #var = #temp;
         )
     } else {
         let err = MalResultComp::Err("Exception: expected symbol".to_string());
@@ -203,7 +209,7 @@ fn get_rust_var_name(mal_symbol: &str) -> String {
 }
 
 fn lower_mal_func_call_template(
-    func: &MalFuncCallTemplate,
+    name: &str,
     args: &[MalAtomComp],
     env: &mut Env,
     assign_to: u32,
@@ -217,7 +223,7 @@ fn lower_mal_func_call_template(
         })
         .unzip::<_, _, Vec<_>, _>();
 
-    let call = MalFuncCall::new(func, arg_names);
+    let call = MalFuncCall::new(name, arg_names);
 
     let assign_to = get_ident(assign_to);
     quote!(#(#args)* let #assign_to = #call;)
