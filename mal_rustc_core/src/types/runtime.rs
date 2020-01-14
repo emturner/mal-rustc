@@ -3,9 +3,12 @@ use std::fmt;
 use std::rc::Rc;
 
 pub type MalResult = Result<MalAtom, String>;
+pub type MalResultRef<'a> = Result<&'a MalAtom, String>;
 
 #[derive(Clone)]
 pub enum MalAtom {
+    // Variable has not currently been defined
+    Undefined,
     Nil,
     Bool(bool),
     Special(Rc<String>),
@@ -16,7 +19,16 @@ pub enum MalAtom {
     Vector(Rc<Vec<MalAtom>>),
     Keyword(Rc<String>),
     HashMap(Rc<HashMap<String, MalAtom>>),
-    Func(Rc<fn(&[&MalAtom]) -> MalResult>)
+    Func(Rc<fn(&[&MalAtom]) -> MalResult>),
+}
+
+impl MalAtom {
+    pub fn is_defined(&self, name: &'static str) -> MalResultRef {
+        match self {
+            Self::Undefined => Err(format!("Exception: {} undefined", name)),
+            _ => Ok(self),
+        }
+    }
 }
 
 impl fmt::Debug for MalAtom {
@@ -28,6 +40,9 @@ impl fmt::Debug for MalAtom {
 impl fmt::Display for MalAtom {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
+            MalAtom::Undefined => unreachable!(
+                "Implementation Exception: MalAtom must be checked to be defined before printing"
+            ),
             MalAtom::Nil => write!(f, "nil"),
             MalAtom::Bool(b) => b.fmt(f),
             MalAtom::Special(s) => s.fmt(f),
@@ -80,7 +95,7 @@ impl fmt::Display for MalAtom {
                     .join(" ");
                 exps.fmt(f)?;
                 write!(f, "}}")
-            },
+            }
             MalAtom::Func(_) => write!(f, "#<function>"),
         }
     }
@@ -97,8 +112,8 @@ impl<'a> std::ops::Add<&'a MalAtom> for MalAtom {
     }
 }
 
-pub fn mal_builtin_plus(args: Vec<&MalAtom>) -> MalResult {
-    args.into_iter()
+pub fn mal_builtin_plus(args: &[&MalAtom]) -> MalResult {
+    args.iter()
         .fold(Ok(MalAtom::Int(0)), |acc, next| acc? + next)
 }
 
@@ -113,8 +128,8 @@ impl<'a> std::ops::Mul<&'a MalAtom> for MalAtom {
     }
 }
 
-pub fn mal_builtin_mul(args: Vec<&MalAtom>) -> MalResult {
-    args.into_iter()
+pub fn mal_builtin_mul(args: &[&MalAtom]) -> MalResult {
+    args.iter()
         .fold(Ok(MalAtom::Int(1)), |acc, next| acc? * next)
 }
 
@@ -129,7 +144,7 @@ impl<'a> std::ops::Div<&'a MalAtom> for MalAtom {
     }
 }
 
-pub fn mal_builtin_div(args: Vec<&MalAtom>) -> MalResult {
+pub fn mal_builtin_div(args: &[&MalAtom]) -> MalResult {
     if args.is_empty() {
         Ok(MalAtom::Int(1))
     } else {
@@ -150,7 +165,7 @@ impl<'a> std::ops::Sub<&'a MalAtom> for MalAtom {
     }
 }
 
-pub fn mal_builtin_sub(args: Vec<&MalAtom>) -> MalResult {
+pub fn mal_builtin_sub(args: &[&MalAtom]) -> MalResult {
     if args.is_empty() {
         Ok(MalAtom::Int(0))
     } else {

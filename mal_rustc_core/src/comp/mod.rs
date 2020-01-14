@@ -50,7 +50,7 @@ pub fn lower(ast: &MalAtomComp, env: &mut Env, assign_to: u32) -> TokenStream {
             if let Some(MalAtomCompRef::Var(name)) = env.find(s) {
                 let name = format_ident!("{}", name);
                 // symbol vals are references of temporaries, so this won't cause a move
-                quote!(let #temp = #name;)
+                quote!(let #temp = #name.is_defined(#s)?;)
             } else {
                 let err = MalResultComp::Err(format!("Exception: symbol '{}' not found", s));
                 lower_mal_result_temp_assignment(err, assign_to)
@@ -228,4 +228,6 @@ fn lower_mal_result_temp_assignment(result: MalResultComp, assign_to: u32) -> To
     quote!(let #temp: &MalAtom = &#result;)
 }
 
-pub fn get_ident(assign_to: u32) -> Ident { format_ident!("_{}", assign_to) }
+pub fn get_ident(assign_to: u32) -> Ident {
+    format_ident!("_{}", assign_to)
+}

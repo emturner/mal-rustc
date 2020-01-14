@@ -17,7 +17,7 @@ pub enum MalAtomComp<'a> {
     SExp(Vec<MalAtomComp<'a>>),
     Vector(Vec<MalAtomComp<'a>>),
     Keyword(&'a str),
-    HashMap(HashMap<String, MalAtomComp<'a>>)
+    HashMap(HashMap<String, MalAtomComp<'a>>),
 }
 impl<'a> ToTokens for MalAtomComp<'a> {
     fn to_tokens(&self, tokens: &mut TokenStream) {
@@ -97,7 +97,7 @@ impl<'a> ToTokens for MalFuncCall<'a> {
             MalArgCount::Many => {
                 let name = format_ident!("{}", self.template.name);
                 let args = &self.args;
-                tokens.extend(quote!(&#name(vec![#(#args),*])?))
+                tokens.extend(quote!(&#name(&[#(#args),*])?))
             }
             _ => unimplemented!(),
         }
