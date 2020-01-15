@@ -123,6 +123,7 @@ fn lower_sexp(sexp: &[MalAtomComp], env: &mut Env, assign_to: u32) -> TokenStrea
         MalAtomComp::Symbol("def!") => lower_def(&sexp[1..], env, assign_to),
         MalAtomComp::Symbol("let*") => lower_let(&sexp[1..], env, assign_to),
         MalAtomComp::Symbol("do") => lower_do(&sexp[1..], env, assign_to),
+        MalAtomComp::Symbol("if") => lower_if(&sexp[1..], env, assign_to),
         MalAtomComp::Symbol(s) => {
             if let Some(MalAtomCompRef::Func(func)) = env.find(s) {
                 lower_mal_func_call_template(&func, &sexp[1..], env, assign_to)
@@ -201,6 +202,56 @@ fn lower_do(args: &[MalAtomComp], env: &mut Env, assign_to: u32) -> TokenStream 
     } else {
         let lowered = args.iter().map(|a| lower(a, env, assign_to));
         quote!(#(#lowered)*)
+    }
+}
+
+fn lower_if(args: &[MalAtomComp], env: &mut Env, assign_to: u32) -> TokenStream {
+    let temp = get_ident(assign_to);
+    let temp1 = get_ident(1);
+
+    let err = MalResultComp::Err("Exception: 'if' requires at least two arguments".to_string());
+    let err = quote!(let #temp: &MalAtom = #err;);
+
+    match (args.get(0), args.get(1), args.get(2)) {
+        (None, _, _) => quote!(let #temp: &MalAtom = &#err;),
+        (Some(cond), None, _) => {
+            let cond = lower(cond, env, assign_to);
+            quote!(
+                #cond
+                #err
+            )
+        }
+        (Some(cond), Some(t), None) => {
+            let cond = lower(cond, env, assign_to);
+            let t = lower(t, env, 1);
+            quote!(
+                #cond
+                let #temp: MalResult = if #temp.into() {
+                    #t
+                    Ok(#temp1.clone())
+                } else {
+                    Ok(MalAtom::Nil)
+                };
+                let #temp: &MalAtom = &#temp?;
+            )
+        }
+        (Some(cond), Some(t), Some(f)) => {
+            let cond = lower(cond, env, assign_to);
+            let t = lower(t, env, 1);
+            let f = lower(f, env, 1);
+
+            quote!(
+                #cond
+                let #temp: MalResult = if #temp.into() {
+                    #t
+                    Ok(#temp1.clone())
+                } else {
+                    #f
+                    Ok(#temp1.clone())
+                };
+                let #temp: &MalAtom = &#temp?;
+            )
+        }
     }
 }
 

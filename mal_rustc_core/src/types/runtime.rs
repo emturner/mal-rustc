@@ -101,6 +101,16 @@ impl fmt::Display for MalAtom {
     }
 }
 
+impl<'a> std::convert::Into<bool> for &'a MalAtom {
+    fn into(self) -> bool {
+        if let MalAtom::Bool(false) | MalAtom::Nil = self {
+            false
+        } else {
+            true
+        }
+    }
+}
+
 impl<'a> std::ops::Add<&'a MalAtom> for MalAtom {
     type Output = MalResult;
 
