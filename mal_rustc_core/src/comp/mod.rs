@@ -231,7 +231,7 @@ fn lower_if(args: &[MalAtomComp], env: &mut Env, assign_to: u32) -> TokenStream 
                     let f = lower(f, env, 1);
                     quote!(#f)
                 }
-                None => quote!(MalAtom::Nil),
+                None => quote!(let #temp1 = &MalAtom::Nil;),
             };
             quote!(
                 #cond
