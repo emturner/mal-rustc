@@ -295,7 +295,12 @@ fn lower_fn(args: &[MalAtomComp], env: &mut Env, assign_to: u32) -> TokenStream 
 }
 
 fn get_rust_var_name(mal_symbol: &str) -> String {
-    format!("_mal_{}", mal_symbol)
+    format!(
+        "_mal_{}",
+        mal_symbol
+            .replace("_hyphen_", "__hyphen__")
+            .replace("-", "_hyphen_")
+    )
 }
 
 fn lower_mal_func_call_template(
