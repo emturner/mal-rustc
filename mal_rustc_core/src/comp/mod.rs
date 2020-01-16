@@ -8,10 +8,10 @@ pub mod env;
 
 pub fn create_core_env<'a>() -> Env<'a> {
     let mut env = Env::new(None);
-    env.set("+".into(), "mal_builtin_plus".to_string());
-    env.set("-".into(), "mal_builtin_sub".to_string());
-    env.set("*".into(), "mal_builtin_mul".to_string());
-    env.set("/".into(), "mal_builtin_div".to_string());
+    env.set("+".into(), "MAL_BUILTIN_PLUS".to_string());
+    env.set("-".into(), "MAL_BUILTIN_SUB".to_string());
+    env.set("*".into(), "MAL_BUILTIN_MUL".to_string());
+    env.set("/".into(), "MAL_BUILTIN_DIV".to_string());
     // drain core assignments
     env.get_new_vars();
     env

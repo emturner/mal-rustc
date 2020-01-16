@@ -5,6 +5,11 @@ use std::rc::Rc;
 pub type MalResult = Result<MalAtom, String>;
 pub type MalResultRef<'a> = Result<&'a MalAtom, String>;
 
+pub const MAL_BUILTIN_PLUS: &MalAtom = &MalAtom::Func(mal_builtin_plus);
+pub const MAL_BUILTIN_SUB: &MalAtom = &MalAtom::Func(mal_builtin_sub);
+pub const MAL_BUILTIN_MUL: &MalAtom = &MalAtom::Func(mal_builtin_mul);
+pub const MAL_BUILTIN_DIV: &MalAtom = &MalAtom::Func(mal_builtin_div);
+
 #[derive(Clone)]
 pub enum MalAtom {
     // Variable has not currently been defined
