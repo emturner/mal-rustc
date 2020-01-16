@@ -148,10 +148,10 @@ fn lower_def(args: &[MalAtomComp], env: &mut Env, assign_to: u32) -> TokenStream
         let rust_var_name = get_rust_var_name(s);
         let val = &args[1];
 
-        env.set(s.into(), rust_var_name.clone());
-
         let val = lower(val, env, assign_to);
         let var = format_ident!("{}", rust_var_name);
+
+        env.set(s.into(), rust_var_name.clone());
 
         quote!(
             #val
@@ -290,7 +290,7 @@ fn lower_fn(args: &[MalAtomComp], env: &mut Env, assign_to: u32) -> TokenStream 
             #body
             Ok(#temp0.clone())
         };
-        let #temp = &MalAtom::Func(#temp);
+        let #temp = &MalAtom::Func(Rc::new(#temp));
     )
 }
 

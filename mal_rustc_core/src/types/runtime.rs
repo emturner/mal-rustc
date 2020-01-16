@@ -5,10 +5,10 @@ use std::rc::Rc;
 pub type MalResult = Result<MalAtom, String>;
 pub type MalResultRef<'a> = Result<&'a MalAtom, String>;
 
-pub const MAL_BUILTIN_PLUS: &MalAtom = &MalAtom::Func(mal_builtin_plus);
-pub const MAL_BUILTIN_SUB: &MalAtom = &MalAtom::Func(mal_builtin_sub);
-pub const MAL_BUILTIN_MUL: &MalAtom = &MalAtom::Func(mal_builtin_mul);
-pub const MAL_BUILTIN_DIV: &MalAtom = &MalAtom::Func(mal_builtin_div);
+pub const MAL_BUILTIN_PLUS: &MalAtom = &MalAtom::BuiltinFunc(mal_builtin_plus);
+pub const MAL_BUILTIN_SUB: &MalAtom = &MalAtom::BuiltinFunc(mal_builtin_sub);
+pub const MAL_BUILTIN_MUL: &MalAtom = &MalAtom::BuiltinFunc(mal_builtin_mul);
+pub const MAL_BUILTIN_DIV: &MalAtom = &MalAtom::BuiltinFunc(mal_builtin_div);
 
 #[derive(Clone)]
 pub enum MalAtom {
@@ -24,7 +24,8 @@ pub enum MalAtom {
     Vector(Rc<Vec<MalAtom>>),
     Keyword(Rc<String>),
     HashMap(Rc<HashMap<String, MalAtom>>),
-    Func(fn(&[&MalAtom]) -> MalResult),
+    Func(Rc<dyn Fn(&[&MalAtom]) -> MalResult>),
+    BuiltinFunc(fn(&[&MalAtom]) -> MalResult),
 }
 
 impl MalAtom {
@@ -38,6 +39,7 @@ impl MalAtom {
     pub fn call(&self, args: &[&MalAtom]) -> MalResult {
         match self {
             Self::Func(f) => f(args),
+            Self::BuiltinFunc(f) => f(args),
             _ => MalResult::Err("Exception: expected a function".to_string()),
         }
     }
@@ -108,7 +110,7 @@ impl fmt::Display for MalAtom {
                 exps.fmt(f)?;
                 write!(f, "}}")
             }
-            MalAtom::Func(_) => write!(f, "#<function>"),
+            MalAtom::Func(_) | MalAtom::BuiltinFunc(_) => write!(f, "#<function>"),
         }
     }
 }
