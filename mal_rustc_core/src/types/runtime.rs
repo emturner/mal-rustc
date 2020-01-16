@@ -19,7 +19,7 @@ pub enum MalAtom {
     Vector(Rc<Vec<MalAtom>>),
     Keyword(Rc<String>),
     HashMap(Rc<HashMap<String, MalAtom>>),
-    Func(Rc<fn(&[&MalAtom]) -> MalResult>),
+    Func(fn(&[&MalAtom]) -> MalResult),
 }
 
 impl MalAtom {
@@ -27,6 +27,13 @@ impl MalAtom {
         match self {
             Self::Undefined => Err(format!("Exception: {} undefined", name)),
             _ => Ok(self),
+        }
+    }
+
+    pub fn call(&self, args: &[&MalAtom]) -> MalResult {
+        match self {
+            Self::Func(f) => f(args),
+            _ => MalResult::Err("Exception: expected a function".to_string()),
         }
     }
 }

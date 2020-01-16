@@ -80,6 +80,6 @@ impl<'a> ToTokens for MalFuncCall<'a> {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         let name = format_ident!("{}", self.name);
         let args = &self.args;
-        tokens.extend(quote!(&#name(&[#(#args),*])?))
+        tokens.extend(quote!(&#name.call(&[#(#args),*])?))
     }
 }

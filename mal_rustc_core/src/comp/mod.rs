@@ -1,6 +1,5 @@
 use crate::types::*;
 use env::Env;
-use env::MalAtomCompRef;
 use proc_macro2::{Ident, TokenStream};
 use quote::{format_ident, quote};
 use std::collections::HashMap;
@@ -9,10 +8,10 @@ pub mod env;
 
 pub fn create_core_env<'a>() -> Env<'a> {
     let mut env = Env::new(None);
-    env.set("+".into(), MalAtomCompRef::Func("mal_builtin_plus".into()));
-    env.set("-".into(), MalAtomCompRef::Func("mal_builtin_sub".into()));
-    env.set("*".into(), MalAtomCompRef::Func("mal_builtin_mul".into()));
-    env.set("/".into(), MalAtomCompRef::Func("mal_builtin_div".into()));
+    env.set("+".into(), "mal_builtin_plus".to_string());
+    env.set("-".into(), "mal_builtin_sub".to_string());
+    env.set("*".into(), "mal_builtin_mul".to_string());
+    env.set("/".into(), "mal_builtin_div".to_string());
     // drain core assignments
     env.get_new_vars();
     env
@@ -25,7 +24,7 @@ pub fn lower(ast: &MalAtomComp, env: &mut Env, assign_to: u32) -> TokenStream {
         MalAtomComp::Vector(ref v) => lower_vector(v, env, assign_to),
         MalAtomComp::HashMap(ref h) => lower_hashmap(h, env, assign_to),
         MalAtomComp::Symbol(ref s) => {
-            if let Some(MalAtomCompRef::Var(name)) = env.find(s) {
+            if let Some(name) = env.find(s) {
                 let name = format_ident!("{}", name);
                 // symbol vals are references of temporaries, so this won't cause a move
                 quote!(let #temp = #name.is_defined(#s)?;)
@@ -49,7 +48,7 @@ pub fn lower(ast: &MalAtomComp, env: &mut Env, assign_to: u32) -> TokenStream {
             .iter()
             .map(|(a, new)| {
                 let rust_name = match env.find(a) {
-                    Some(MalAtomCompRef::Var(name)) | Some(MalAtomCompRef::Func(name)) => name,
+                    Some(name) => name,
                     _ => unreachable!(),
                 };
                 let rust_name = format_ident!("{}", rust_name);
@@ -124,8 +123,9 @@ fn lower_sexp(sexp: &[MalAtomComp], env: &mut Env, assign_to: u32) -> TokenStrea
         MalAtomComp::Symbol("let*") => lower_let(&sexp[1..], env, assign_to),
         MalAtomComp::Symbol("do") => lower_do(&sexp[1..], env, assign_to),
         MalAtomComp::Symbol("if") => lower_if(&sexp[1..], env, assign_to),
+        MalAtomComp::Symbol("fn*") => lower_fn(&sexp[1..], env, assign_to),
         MalAtomComp::Symbol(s) => {
-            if let Some(MalAtomCompRef::Func(func)) = env.find(s) {
+            if let Some(func) = env.find(s) {
                 lower_mal_func_call_template(&func, &sexp[1..], env, assign_to)
             } else {
                 let err = MalResultComp::Err(format!("Exception: function '{}' not found.", s));
@@ -146,9 +146,11 @@ fn lower_def(args: &[MalAtomComp], env: &mut Env, assign_to: u32) -> TokenStream
         lower_mal_result_temp_assignment(err, assign_to)
     } else if let MalAtomComp::Symbol(s) = args[0] {
         let rust_var_name = get_rust_var_name(s);
-        env.set(s.into(), MalAtomCompRef::Var(rust_var_name.clone()));
+        let val = &args[1];
 
-        let val = lower(&args[1], env, assign_to);
+        env.set(s.into(), rust_var_name.clone());
+
+        let val = lower(val, env, assign_to);
         let var = format_ident!("{}", rust_var_name);
 
         quote!(
@@ -221,25 +223,16 @@ fn lower_if(args: &[MalAtomComp], env: &mut Env, assign_to: u32) -> TokenStream 
                 #err
             )
         }
-        (Some(cond), Some(t), None) => {
+        (Some(cond), Some(t), f) => {
             let cond = lower(cond, env, assign_to);
             let t = lower(t, env, 1);
-            quote!(
-                #cond
-                let #temp: MalResult = if #temp.into() {
-                    #t
-                    Ok(#temp1.clone())
-                } else {
-                    Ok(MalAtom::Nil)
-                };
-                let #temp: &MalAtom = &#temp?;
-            )
-        }
-        (Some(cond), Some(t), Some(f)) => {
-            let cond = lower(cond, env, assign_to);
-            let t = lower(t, env, 1);
-            let f = lower(f, env, 1);
-
+            let f = match f {
+                Some(f) => {
+                    let f = lower(f, env, 1);
+                    quote!(#f)
+                }
+                None => quote!(MalAtom::Nil),
+            };
             quote!(
                 #cond
                 let #temp: MalResult = if #temp.into() {
@@ -253,6 +246,52 @@ fn lower_if(args: &[MalAtomComp], env: &mut Env, assign_to: u32) -> TokenStream 
             )
         }
     }
+}
+
+fn lower_fn(args: &[MalAtomComp], env: &mut Env, assign_to: u32) -> TokenStream {
+    let temp = get_ident(assign_to);
+
+    if args.len() < 2 {
+        let err =
+            MalResultComp::Err("Exception: 'fn*' requires at least two arguments".to_string());
+        return quote!(let #temp: &MalAtom = &#err;);
+    }
+
+    let mut env = Env::new(Some(env));
+
+    let (args, body) = (&args[0], &args[1]);
+
+    let args = if let MalAtomComp::SExp(args) | MalAtomComp::Vector(args) = args {
+        let args = args.iter().zip(0 as usize..).map(|(a, i)| match a {
+            MalAtomComp::Symbol(a) => {
+                let rust_name = get_rust_var_name(a);
+                env.set(a.to_string(), rust_name.clone());
+
+                let ident = format_ident!("{}", rust_name);
+                quote!(let #ident = *_args.get(#i).unwrap_or(&&MalAtom::Nil);)
+            }
+            _ => {
+                let err = MalResultComp::Err("Exception: expected symbol".to_string());
+                quote!(let _: &MalAtom = #err;)
+            }
+        });
+        quote!(#(#args)*)
+    } else {
+        let err = MalResultComp::Err("Exception: expected list or vector".to_string());
+        quote!(let _ : &MalAtom = #err;)
+    };
+    let _ = env.get_new_vars();
+    let body = lower(&body, &mut env, 0);
+    let temp0 = get_ident(0);
+
+    quote!(
+        let #temp = |_args: &[&MalAtom]| -> MalResult {
+            #args
+            #body
+            Ok(#temp0.clone())
+        };
+        let #temp = &MalAtom::Func(#temp);
+    )
 }
 
 fn get_rust_var_name(mal_symbol: &str) -> String {

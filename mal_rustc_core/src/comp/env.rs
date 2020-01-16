@@ -8,7 +8,7 @@ pub enum MalAtomCompRef {
 
 pub struct Env<'a> {
     outer: Option<&'a Env<'a>>,
-    current: HashMap<String, MalAtomCompRef>,
+    current: HashMap<String, String>,
     new_vars: HashMap<String, bool>,
 }
 
@@ -21,7 +21,7 @@ impl<'a> Env<'a> {
         }
     }
 
-    pub fn set(&mut self, name: String, val: MalAtomCompRef) {
+    pub fn set(&mut self, name: String, val: String) {
         let existed_in_current = self.current.insert(name.clone(), val).is_some();
 
         if !existed_in_current {
@@ -30,7 +30,7 @@ impl<'a> Env<'a> {
         }
     }
 
-    pub fn find(&self, name: &'a str) -> Option<MalAtomCompRef> {
+    pub fn find(&self, name: &'a str) -> Option<String> {
         let v = self.current.get(name);
         if let (None, Some(outer)) = (v, self.outer) {
             outer.find(name)
