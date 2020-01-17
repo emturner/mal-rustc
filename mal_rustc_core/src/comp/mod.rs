@@ -12,11 +12,27 @@ pub fn create_core_env<'a>() -> Env<'a> {
     env.set("-".into(), "MAL_BUILTIN_SUB".to_string(), false);
     env.set("*".into(), "MAL_BUILTIN_MUL".to_string(), false);
     env.set("/".into(), "MAL_BUILTIN_DIV".to_string(), false);
+    env.set("<".into(), "MAL_BUILTIN_LESS_THAN".to_string(), false);
+    env.set(
+        "<=".into(),
+        "MAL_BUILTIN_LESS_THAN_OR_EQUAL".to_string(),
+        false,
+    );
+    env.set(">".into(), "MAL_BUILTIN_GREATER_THAN".to_string(), false);
+    env.set(
+        ">=".into(),
+        "MAL_BUILTIN_GREATER_THAN_OR_EQUAL".to_string(),
+        false,
+    );
+
+    env.set("=".into(), "MAL_BUILTIN_EQ".to_string(), false);
 
     env.set("list".into(), "MAL_BUILTIN_LIST".to_string(), false);
     env.set("list?".into(), "MAL_BUILTIN_IS_LIST".to_string(), false);
     env.set("empty?".into(), "MAL_BUILTIN_IS_EMPTY".to_string(), false);
     env.set("count".into(), "MAL_BUILTIN_COUNT".to_string(), false);
+
+    env.set("prn".into(), "MAL_BUILTIN_PRN".to_string(), false);
 
     // drain core assignments
     env.get_new_vars();

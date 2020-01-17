@@ -28,7 +28,7 @@ impl<'a> ToTokens for MalAtomComp<'a> {
             MalAtomComp::String(s) => quote!(MalAtom::String(Rc::new(#s.to_string()))),
             MalAtomComp::Int(i) => quote!(MalAtom::Int(#i)),
             MalAtomComp::Symbol(s) => quote!(MalAtom::Symbol(Rc::new(#s.to_string()))),
-            MalAtomComp::SExp(sexp) => quote!(MalAtom::SExp(Rc::new(vec![#(#sexp),*]))),
+            MalAtomComp::SExp(sexp) => quote!(MalAtom::List(Rc::new(vec![#(#sexp),*]))),
             MalAtomComp::Vector(v) => quote!(MalAtom::Vector(Rc::new(vec![#(#v.clone()),*]))),
             MalAtomComp::Keyword(k) => quote!(MalAtom::Keyword(Rc::new(#k.to_string()))),
             MalAtomComp::HashMap(h) if h.is_empty() => {

@@ -9,11 +9,21 @@ pub const MAL_BUILTIN_PLUS: &MalAtom = &MalAtom::BuiltinFunc(mal_builtin_plus);
 pub const MAL_BUILTIN_SUB: &MalAtom = &MalAtom::BuiltinFunc(mal_builtin_sub);
 pub const MAL_BUILTIN_MUL: &MalAtom = &MalAtom::BuiltinFunc(mal_builtin_mul);
 pub const MAL_BUILTIN_DIV: &MalAtom = &MalAtom::BuiltinFunc(mal_builtin_div);
+pub const MAL_BUILTIN_LESS_THAN: &MalAtom = &MalAtom::BuiltinFunc(mal_builtin_less_than);
+pub const MAL_BUILTIN_LESS_THAN_OR_EQUAL: &MalAtom =
+    &MalAtom::BuiltinFunc(mal_builtin_less_than_or_equal);
+pub const MAL_BUILTIN_GREATER_THAN: &MalAtom = &MalAtom::BuiltinFunc(mal_builtin_greater_than);
+pub const MAL_BUILTIN_GREATER_THAN_OR_EQUAL: &MalAtom =
+    &MalAtom::BuiltinFunc(mal_builtin_greater_than_or_equal);
+// Equality
+pub const MAL_BUILTIN_EQ: &MalAtom = &MalAtom::BuiltinFunc(mal_builtin_eq);
 // List functions
 pub const MAL_BUILTIN_LIST: &MalAtom = &MalAtom::BuiltinFunc(mal_builtin_list);
 pub const MAL_BUILTIN_IS_LIST: &MalAtom = &MalAtom::BuiltinFunc(mal_builtin_is_list);
 pub const MAL_BUILTIN_IS_EMPTY: &MalAtom = &MalAtom::BuiltinFunc(mal_builtin_is_empty);
 pub const MAL_BUILTIN_COUNT: &MalAtom = &MalAtom::BuiltinFunc(mal_builtin_count);
+// Printing
+pub const MAL_BUILTIN_PRN: &MalAtom = &MalAtom::BuiltinFunc(mal_builtin_prn);
 
 #[derive(Clone)]
 pub enum MalAtom {
@@ -120,6 +130,41 @@ impl fmt::Display for MalAtom {
     }
 }
 
+impl std::cmp::PartialEq for MalAtom {
+    fn eq(&self, other: &MalAtom) -> bool {
+        use MalAtom::*;
+
+        if self as *const _ == other as *const _ {
+            return true;
+        }
+        match (self, other) {
+            (Undefined, _) | (_, Undefined) => unreachable!(
+                "Implementation Exception: MalAtom must be checked to be defined before printing"
+            ),
+            (Nil, Nil) => false,
+            (Bool(x), Bool(y)) => x == y,
+            (Special(x), Special(y)) => x == y,
+            (String(x), String(y)) => x == y,
+            (Int(x), Int(y)) => x == y,
+            (Symbol(x), Symbol(y)) => x == y,
+            (List(x), List(y)) => x == y,
+            (Vector(x), Vector(y)) => x == y,
+            (Keyword(x), Keyword(y)) => x == y,
+            (HashMap(x), HashMap(y)) => x == y,
+            (BuiltinFunc(x), BuiltinFunc(y)) => x as *const _ == y as *const _,
+            (Func(x), Func(y)) => x.as_ref() as *const _ == y.as_ref() as *const _,
+            _ => false,
+        }
+    }
+}
+
+pub fn mal_builtin_eq(args: &[&MalAtom]) -> MalResult {
+    match (args.get(0), args.get(1)) {
+        (Some(x), Some(y)) => Ok(MalAtom::Bool(x == y)),
+        _ => Err("Exception: '=' requires two arguments".to_string()),
+    }
+}
+
 impl<'a> std::convert::Into<bool> for &'a MalAtom {
     fn into(self) -> bool {
         if let MalAtom::Bool(false) | MalAtom::Nil = self {
@@ -204,9 +249,37 @@ pub fn mal_builtin_sub(args: &[&MalAtom]) -> MalResult {
     }
 }
 
+pub fn mal_builtin_less_than(args: &[&MalAtom]) -> MalResult {
+    match (args.get(0), args.get(1)) {
+        (Some(MalAtom::Int(x)), Some(MalAtom::Int(y))) => Ok(MalAtom::Bool(x < y)),
+        _ => Err("Exception: expected two ints".to_string()),
+    }
+}
+
+pub fn mal_builtin_less_than_or_equal(args: &[&MalAtom]) -> MalResult {
+    match (args.get(0), args.get(1)) {
+        (Some(MalAtom::Int(x)), Some(MalAtom::Int(y))) => Ok(MalAtom::Bool(x <= y)),
+        _ => Err("Exception: expected two ints".to_string()),
+    }
+}
+
+pub fn mal_builtin_greater_than(args: &[&MalAtom]) -> MalResult {
+    match (args.get(0), args.get(1)) {
+        (Some(MalAtom::Int(x)), Some(MalAtom::Int(y))) => Ok(MalAtom::Bool(x > y)),
+        _ => Err("Exception: expected two ints".to_string()),
+    }
+}
+
+pub fn mal_builtin_greater_than_or_equal(args: &[&MalAtom]) -> MalResult {
+    match (args.get(0), args.get(1)) {
+        (Some(MalAtom::Int(x)), Some(MalAtom::Int(y))) => Ok(MalAtom::Bool(x >= y)),
+        _ => Err("Exception: expected two ints".to_string()),
+    }
+}
+
 pub fn mal_builtin_list(args: &[&MalAtom]) -> MalResult {
     Ok(MalAtom::List(Rc::new(
-        args.iter().map(|a| (*a).clone()).collect()
+        args.iter().map(|a| (*a).clone()).collect(),
     )))
 }
 
@@ -234,4 +307,12 @@ pub fn mal_builtin_count(args: &[&MalAtom]) -> MalResult {
         Some(_) => Ok(MalAtom::Int(1)),
         _ => Err("Exception: 'count?' requires at least one argument".to_string()),
     }
+}
+
+pub fn mal_builtin_prn(args: &[&MalAtom]) -> MalResult {
+    if let Some(a) = args.get(0) {
+        println!("{}", a);
+    }
+
+    Ok(MalAtom::Nil)
 }
