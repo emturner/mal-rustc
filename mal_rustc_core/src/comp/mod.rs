@@ -8,10 +8,10 @@ pub mod env;
 
 pub fn create_core_env<'a>() -> Env<'a> {
     let mut env = Env::new(None);
-    env.set("+".into(), "MAL_BUILTIN_PLUS".to_string());
-    env.set("-".into(), "MAL_BUILTIN_SUB".to_string());
-    env.set("*".into(), "MAL_BUILTIN_MUL".to_string());
-    env.set("/".into(), "MAL_BUILTIN_DIV".to_string());
+    env.set("+".into(), "MAL_BUILTIN_PLUS".to_string(), false);
+    env.set("-".into(), "MAL_BUILTIN_SUB".to_string(), false);
+    env.set("*".into(), "MAL_BUILTIN_MUL".to_string(), false);
+    env.set("/".into(), "MAL_BUILTIN_DIV".to_string(), false);
     // drain core assignments
     env.get_new_vars();
     env
@@ -157,7 +157,7 @@ fn lower_def(args: &[MalAtomComp], env: &mut Env, assign_to: u32) -> TokenStream
         let val = lower(val, env, assign_to);
         let var = format_ident!("{}", rust_var_name);
 
-        env.set(s.into(), rust_var_name.clone());
+        env.set(s.into(), rust_var_name.clone(), false);
 
         quote!(
             #val
@@ -271,7 +271,7 @@ fn lower_fn(args: &[MalAtomComp], env: &mut Env, assign_to: u32) -> TokenStream 
         let args = args.iter().zip(0 as usize..).map(|(a, i)| match a {
             MalAtomComp::Symbol(a) => {
                 let rust_name = get_rust_var_name(a);
-                env.set(a.to_string(), rust_name.clone());
+                env.set(a.to_string(), rust_name.clone(), true);
 
                 let ident = format_ident!("{}", rust_name);
                 quote!(let #ident = *_args.get(#i).unwrap_or(&&MalAtom::Nil);)

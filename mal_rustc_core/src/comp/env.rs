@@ -24,16 +24,16 @@ impl<'a> Env<'a> {
         }
     }
 
-    pub fn set(&mut self, name: String, val: String) {
-        let existed_in_current = self.current.insert(name.clone(), val).is_some();
+    pub fn set(&mut self, name: String, val: String, is_arg: bool) {
+        let existed_in_current = self.current.insert(name.clone(), val.clone()).is_some();
 
         if !existed_in_current {
             let exists_in_outer = self
                 .outer
                 .map_or(false, |e| e.find_inner(&name, true).0.is_some());
 
-            if exists_in_outer {
-                self.new_captures.insert(name.clone());
+            if !is_arg && exists_in_outer {
+                self.new_captures.insert(val);
             }
             self.new_vars.insert(name, !exists_in_outer);
         }
