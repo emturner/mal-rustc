@@ -287,14 +287,26 @@ fn lower_fn(args: &[MalAtomComp], env: &mut Env, assign_to: u32) -> TokenStream 
         quote!(let _ : &MalAtom = #err;)
     };
     let _ = env.get_new_vars();
+
     let body = lower(&body, &mut env, 0);
     let temp0 = get_ident(0);
 
+    let captures = env
+        .get_new_captures()
+        .iter()
+        .map(|c| format_ident!("{}", c))
+        .collect::<Vec<_>>();
+
     quote!(
-        let #temp = |_args: &[&MalAtom]| -> MalResult {
-            #args
-            #body
-            Ok(#temp0.clone())
+        let #temp = {
+                #(let #captures: MalAtom = (*#captures).clone();)*
+
+                move |_args: &[&MalAtom]| -> MalResult {
+                    #(let #captures: &MalAtom = &#captures;)*
+                    #args
+                    #body
+                    Ok(#temp0.clone())
+            }
         };
         let #temp = &MalAtom::Func(Rc::new(#temp));
     )
