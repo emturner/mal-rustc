@@ -9,6 +9,11 @@ pub const MAL_BUILTIN_PLUS: &MalAtom = &MalAtom::BuiltinFunc(mal_builtin_plus);
 pub const MAL_BUILTIN_SUB: &MalAtom = &MalAtom::BuiltinFunc(mal_builtin_sub);
 pub const MAL_BUILTIN_MUL: &MalAtom = &MalAtom::BuiltinFunc(mal_builtin_mul);
 pub const MAL_BUILTIN_DIV: &MalAtom = &MalAtom::BuiltinFunc(mal_builtin_div);
+// List functions
+pub const MAL_BUILTIN_LIST: &MalAtom = &MalAtom::BuiltinFunc(mal_builtin_list);
+pub const MAL_BUILTIN_IS_LIST: &MalAtom = &MalAtom::BuiltinFunc(mal_builtin_is_list);
+pub const MAL_BUILTIN_IS_EMPTY: &MalAtom = &MalAtom::BuiltinFunc(mal_builtin_is_empty);
+pub const MAL_BUILTIN_COUNT: &MalAtom = &MalAtom::BuiltinFunc(mal_builtin_count);
 
 #[derive(Clone)]
 pub enum MalAtom {
@@ -20,7 +25,7 @@ pub enum MalAtom {
     String(Rc<String>),
     Int(i64),
     Symbol(Rc<String>),
-    SExp(Rc<Vec<MalAtom>>),
+    List(Rc<Vec<MalAtom>>),
     Vector(Rc<Vec<MalAtom>>),
     Keyword(Rc<String>),
     HashMap(Rc<HashMap<String, MalAtom>>),
@@ -69,9 +74,9 @@ impl fmt::Display for MalAtom {
             .fmt(f),
             MalAtom::Int(i) => i.fmt(f),
             MalAtom::Symbol(s) => s.fmt(f),
-            MalAtom::SExp(sexp) => {
+            MalAtom::List(list) => {
                 write!(f, "(")?;
-                let exps = sexp
+                let exps = list
                     .iter()
                     .map(|s| format!("{}", s))
                     .collect::<Vec<String>>()
@@ -196,5 +201,37 @@ pub fn mal_builtin_sub(args: &[&MalAtom]) -> MalResult {
         args[1..]
             .iter()
             .fold(Ok(args[0].clone()), |acc, next| acc? - next)
+    }
+}
+
+pub fn mal_builtin_list(args: &[&MalAtom]) -> MalResult {
+    Ok(MalAtom::List(Rc::new(
+        args.iter().map(|a| (*a).clone()).collect()
+    )))
+}
+
+pub fn mal_builtin_is_list(args: &[&MalAtom]) -> MalResult {
+    match args.get(0) {
+        Some(MalAtom::List(_)) => Ok(MalAtom::Bool(true)),
+        Some(_) => Ok(MalAtom::Bool(false)),
+        _ => Err("Exception: 'list?' requires at least one argument".to_string()),
+    }
+}
+
+pub fn mal_builtin_is_empty(args: &[&MalAtom]) -> MalResult {
+    match args.get(0) {
+        Some(MalAtom::List(l)) => Ok(MalAtom::Bool(l.is_empty())),
+        Some(MalAtom::Nil) => Ok(MalAtom::Bool(false)),
+        Some(_) => Ok(MalAtom::Bool(true)),
+        _ => Err("Exception: 'empty?' requires at least one argument".to_string()),
+    }
+}
+
+pub fn mal_builtin_count(args: &[&MalAtom]) -> MalResult {
+    match args.get(0) {
+        Some(MalAtom::List(l)) => Ok(MalAtom::Int(l.len() as i64)),
+        Some(MalAtom::Nil) => Ok(MalAtom::Int(0)),
+        Some(_) => Ok(MalAtom::Int(1)),
+        _ => Err("Exception: 'count?' requires at least one argument".to_string()),
     }
 }
