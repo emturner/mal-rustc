@@ -118,7 +118,7 @@ fn lower_vector(v: &[MalAtomComp], env: &mut Env, assign_to: u32) -> TokenStream
 }
 
 fn lower_sexp(sexp: &[MalAtomComp], env: &mut Env, assign_to: u32) -> TokenStream {
-    match sexp[0] {
+    match &sexp[0] {
         MalAtomComp::Symbol("def!") => lower_def(&sexp[1..], env, assign_to),
         MalAtomComp::Symbol("let*") => lower_let(&sexp[1..], env, assign_to),
         MalAtomComp::Symbol("do") => lower_do(&sexp[1..], env, assign_to),
@@ -131,6 +131,12 @@ fn lower_sexp(sexp: &[MalAtomComp], env: &mut Env, assign_to: u32) -> TokenStrea
                 let err = MalResultComp::Err(format!("Exception: function '{}' not found.", s));
                 lower_mal_result_temp_assignment(err, assign_to)
             }
+        }
+        MalAtomComp::SExp(s) => {
+            let lowered = lower_sexp(&s, env, assign_to);
+            let temp = format!("_{}", assign_to);
+            let call = lower_mal_func_call_template(&temp, &sexp[1..], env, assign_to);
+            quote!(#lowered #call)
         }
         _ => {
             let err = MalResultComp::Err("Expected a function".to_string());
@@ -311,7 +317,7 @@ fn lower_mal_func_call_template(
 ) -> TokenStream {
     let (args, arg_names) = args
         .iter()
-        .zip(assign_to..)
+        .zip(assign_to + 1..)
         .map(|(atom, u)| {
             let assign_to = get_ident(u);
             (lower(atom, env, u), quote!(#assign_to))
