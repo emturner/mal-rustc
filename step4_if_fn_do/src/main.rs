@@ -18,6 +18,8 @@ use mal_rustc_core::{
     parser, MAL_RUNTIME,
 };
 
+const MAL_REPL_NEW_MARKER: &str = "####NEW####";
+
 fn main() {
     let mut tokens = vec![];
     let mut env = create_core_env();
@@ -51,16 +53,22 @@ fn compile_mal(
 
     if let Ok((_, ast)) = parse_result {
         let rust_tokens = lower(&ast, env, 0);
-        saved_tokens.insert(saved_tokens.len(), rust_tokens);
         let temp = get_ident(0);
         let result_tokens = quote!(let _result: MalResult = Ok(#temp.clone()););
 
         let tokens = quote!(
             #(#saved_tokens
-              *counter += 1;
+            *counter += 1;
             )*
+
+            println!(#MAL_REPL_NEW_MARKER);
+
+            #rust_tokens
+            *counter += 1;
+
             #result_tokens
         );
+        saved_tokens.insert(saved_tokens.len(), rust_tokens);
         saved_tokens.insert(saved_tokens.len(), result_tokens);
 
         let output = format!(
@@ -120,7 +128,14 @@ fn rep(input: &str, env: &mut Env, tokens: &mut Vec<TokenStream>) {
                             tokens.truncate(code as usize - 1);
                         }
                     }
-                    println!("{}", String::from_utf8_lossy(&result.stdout));
+                    let output = String::from_utf8_lossy(&result.stdout)
+                        .lines()
+                        .skip_while(|l| l != &MAL_REPL_NEW_MARKER)
+                        .skip(1)
+                        .collect::<Vec<_>>()
+                        .join("\n");
+
+                    println!("{}", output);
                 }
             }
         }
